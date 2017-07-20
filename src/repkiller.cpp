@@ -16,12 +16,12 @@ int DEBUG_ACTIVE = 0;
 int HARD_DEBUG_ACTIVE = 0;
 
 void print_all();
-void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
+void init_args(int argc, char ** av, FILE ** multifrags, char ** out_file_base_path,
     uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size,
     FILE ** trim_frags_file, bool * trim_frags_file_write);
 int main(int ac, char **av) {
-    
-    
+
+
     //Iterator
     uint64_t i;
     //Number of frags loaded, number of sequences loaded
@@ -39,18 +39,19 @@ int main(int ac, char **av) {
     //The number of iterations to trimm
     uint64_t N_ITERA = 500; //Default
     //Path to the multifrags file
-    char multifrags_path[512];
-    multifrags_path[0] = '\0';
+    char multifrags_path[512]; multifrags_path[0] = '\0';
     //Initial hash table size (divisor of the longest sequence)
     uint64_t ht_size = 100; //Default
     //Default behaviour is the trimmed frags do not already exist
-    bool trim_frags_file_write = true; 
-    
-
+    bool trim_frags_file_write = true;
+    //
+    char * out_file_base_path = new char[MAX_LINE];
+    //
+    char * out_file_name = new char[MAX_LINE];
 
     //Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    FILE * frags_file = NULL, * lengths_file = NULL, * out_file = NULL, * trim_frags_file = NULL;
-    init_args(ac, av, &frags_file, &out_file, &min_len, &N_ITERA, multifrags_path, &ht_size, &trim_frags_file, &trim_frags_file_write);
+    FILE * frags_file = NULL, * lengths_file = NULL, * trim_frags_file = NULL;
+    init_args(ac, av, &frags_file, &out_file_base_path, &min_len, &N_ITERA, multifrags_path, &ht_size, &trim_frags_file, &trim_frags_file_write);
 
     //Concat .lengths to path of multifrags %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     char path_lengths[READLINE];
@@ -73,7 +74,7 @@ int main(int ac, char **av) {
     end = clock();
     print_memory_usage();
     fprintf(stdout, "[INFO] Loaded fragments into memory. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
-    fclose(frags_file); 
+    fclose(frags_file);
 
 
     //Initial mapping of fragments to table of genomes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -81,10 +82,10 @@ int main(int ac, char **av) {
     unsigned char ** map_table = (unsigned char **) std::calloc(n_files, sizeof(unsigned char *));
     total_bytes_in_use += n_files*sizeof(unsigned char *);
     //Allocate map table
-    for(i=0; i<n_files; i++){ 
-        map_table[i] = (unsigned char *) std::calloc(seq_manager->get_sequence_by_label(i)->len, sizeof(unsigned char)); 
+    for(i=0; i<n_files; i++){
+        map_table[i] = (unsigned char *) std::calloc(seq_manager->get_sequence_by_label(i)->len, sizeof(unsigned char));
         total_bytes_in_use += seq_manager->get_sequence_by_label(i)->len * sizeof(unsigned char);
-        if(map_table[i] == NULL) terror("Could not allocate map table"); 
+        if(map_table[i] == NULL) terror("Could not allocate map table");
     }
     map_frags_to_genomes(map_table, loaded_frags, total_frags, seq_manager);
     //Compute initial coverage
@@ -97,7 +98,7 @@ int main(int ac, char **av) {
     //Trimming %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     uint64_t ratio_itera = N_ITERA/5;
-    //Check if frags had already been computed and exist 
+    //Check if frags had already been computed and exist
     if(trim_frags_file != NULL && trim_frags_file_write == false){
         // Load fragments trimmed
         total_bytes_in_use -= total_frags * sizeofFragment();
@@ -118,8 +119,8 @@ int main(int ac, char **av) {
         }
         total_bytes_in_use += total_frags * sizeofFragment();
     }
-    
-    
+
+
     //Compute final coverage
     get_coverage_from_genome_grid(map_table, seq_manager, n_files, min_len);
     //Write frags if it was set
@@ -133,7 +134,7 @@ int main(int ac, char **av) {
     print_memory_usage();
     fprintf(stdout, "[INFO] Trimming of fragments completed after %"PRIu64" iteration(s).\n       Number of final fragments: %"PRIu64". T = %e\n", N_ITERA, total_frags, (double)(end-begin)/CLOCKS_PER_SEC);
 
-    
+
     //Frags to blocks conversion %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     memory_pool * mp = new memory_pool(POOL_SIZE);
@@ -153,22 +154,24 @@ int main(int ac, char **av) {
     //fprintf(stdout, "[INFO] Insertion of fragments into hash table completed. Load factor = %e. T = %e\n", ht->get_load_factor(), (double)(end-begin)/CLOCKS_PER_SEC);
     print_memory_usage();
     fprintf(stdout, "[INFO] Insertion of fragments into hash table completed. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
-     
-    
-    
+
+
+
     //Generate synteny blocks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     Synteny_list * synteny_block_list = compute_synteny_list(ht, n_files, mp, &last_s_id);
     //traverse_synteny_list_and_write(synteny_block_list, n_files, "init");
     traverse_synteny_list(synteny_block_list);
 
-    //Put repetition detector function here 
+    // TODO remove repetitions
+
+    save_all_frag_pairs(out_file_base_path, seq_manager, synteny_block_list);
 
     end = clock();
     print_memory_usage();
     fprintf(stdout, "[INFO] Generated synteny blocks. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
-    
-    
+
+
     // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -176,11 +179,11 @@ int main(int ac, char **av) {
 
     //ht->print_hash_table(2);
 
-    
-    
+
+
     //print_maptable_portion(map_table, 0, 194, 50, 0);
     //print_maptable_portion(map_table, 0, 231, 50, 1);
-    
+
     /*
     print_maptable_portion(map_table, 833568  , 833983, 60, 1);
     print_maptable_portion(map_table, 834344  , 834759, 60, 2);
@@ -196,27 +199,29 @@ int main(int ac, char **av) {
     Synteny_list * sbl = find_synteny_block_from_block(sbl, &b->b);
     if(sbl != NULL) printSyntenyListNode(sbl);
     getchar();
-    */    
-    
-    
+    */
+
+
     for(i=0; i<n_files; i++){
         std::free(map_table[i]);
     }
     std::free(map_table);
     std::free(loaded_frags);
 
-    fclose(out_file);
-    
+    //fclose(out_file);
+
     if(trim_frags_file != NULL){
         fclose(trim_frags_file);
     }
-    
+
+    delete [] out_file_base_path;
+    delete [] out_file_name;
 
     delete ht;
     delete mp;
     delete seq_manager;
 
-    
+
     return 0;
 }
 
@@ -233,10 +238,10 @@ void print_all(){
     fprintf(stdout, "           --help      Shows the help for program usage\n");
 }
 
-void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
+void init_args(int argc, char ** av, FILE ** multifrags, char ** out_file_base_path,
     uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size,
     FILE ** trim_frags_file, bool * trim_frags_file_write){
-    
+
     int pNum = 0;
     while(pNum < argc){
         if(strcmp(av[pNum], "--debug") == 0) DEBUG_ACTIVE = 1;
@@ -263,8 +268,8 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
             }
         }
         if(strcmp(av[pNum], "-out") == 0){
-            *out_file = fopen64(av[pNum+1], "wt");
-            if(out_file==NULL) terror("Could not open output file");
+            if(av[pNum+1]==NULL) terror("ERR¿?");
+            strcpy(*out_file_base_path, av[pNum+1]);
         }
         if(strcmp(av[pNum], "-min_len_trimming") == 0){
             *min_len_trimming = (uint64_t) atoi(av[pNum+1]);
@@ -280,10 +285,9 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
         }
         pNum++;
     }
-    
-    if(*multifrags==NULL || *out_file==NULL || path_frags[0] == '\0'){
+
+    if(*multifrags==NULL ||  *out_file_base_path==NULL || path_frags[0] == '\0'){
         print_all();
         terror("A frags file and an output file must be specified");
     }
 }
-
