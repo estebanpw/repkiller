@@ -1672,16 +1672,39 @@ void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len){
 }
 
 
-void save_frags_from_block(FILE * out_file, Block * b) {
+void save_frags_from_block(FILE * out_file, Block * b, int repetitions) {
   Frags_list * fl = b->f_list;
   FragFile f;
 
   while (fl != NULL){
     f = *fl->f;
-    fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
-    fprintf(out_file, "0,%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), 0);
+    if (!repetitions) {
+      fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
+      fprintf(out_file, "0,%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), repetitions);
+    }
     fl = fl->next;
   }
+}
+
+int contains_repetitions(Synteny_block * ptr_sb, uint64_t seq1_label, uint64_t seq2_label) {
+  uint8_t repetitions;
+  Block * ptr_b;
+
+  repetitions = 0b00;
+
+  while (ptr_sb != NULL) {
+    ptr_b = ptr_sb->b;
+    if (ptr_b->genome->id == seq1_label) {
+      if (repetitions & 0b01) return 1;
+      else repetitions |= 0b01;
+    } else if (ptr_b->genome->id == seq2_label) {
+      if (repetitions & 0b10) return 1;
+      else repetitions |= 0b10;
+    }
+    ptr_sb = ptr_sb->next;
+  }
+
+  return 0;
 }
 
 void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Synteny_list * sbl) {
@@ -1690,6 +1713,7 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, s
   Synteny_block * ptr_sb;
   Block * ptr_b;
   uint64_t gen_id;
+  int repetitions;
 
   seq1 = seq_mngr->get_sequence_by_label(seq1_label);
   seq2 = seq_mngr->get_sequence_by_label(seq2_label);
@@ -1697,11 +1721,13 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, s
   write_header(out_file, seq1->len, seq2->len);
   while (ptr_sbl != NULL){
     ptr_sb = ptr_sbl->sb;
+    // Check if SB contains repetitions
+    repetitions = contains_repetitions(ptr_sb, seq1_label, seq2_label);
     while (ptr_sb != NULL){
         ptr_b = ptr_sb->b;
         gen_id = ptr_b->genome->id;
-        if (gen_id == seq1_label || gen_id == seq2_label){
-            save_frags_from_block(out_file, ptr_b);
+        if (gen_id == seq1_label){
+            save_frags_from_block(out_file, ptr_b, repetitions);
         }
         ptr_sb = ptr_sb->next;
     }
