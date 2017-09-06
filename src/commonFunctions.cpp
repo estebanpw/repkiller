@@ -1678,10 +1678,8 @@ void save_frags_from_block(FILE * out_file, Block * b, int repetitions) {
 
   while (fl != NULL){
     f = *fl->f;
-    if (!repetitions) {
-      fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
-      fprintf(out_file, "0,%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), repetitions);
-    }
+    fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
+    fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", b->id, f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), repetitions);
     fl = fl->next;
   }
 }
