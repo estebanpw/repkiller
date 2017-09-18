@@ -1654,7 +1654,7 @@ void print_memory_usage(){
 
 void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len){
     fprintf(f, "CSV file\n");
-    fprintf(f, "[Jul.15 -- < arjona@uma.es >\n");
+    fprintf(f, "[Jul.15 -- < bitlab - Departamento de Arquitectura de Computadores >\n");
     fprintf(f, "SeqX filename	: DATA1.dat\n");
     fprintf(f, "SeqY filename	: DATA2.dat\n");
     fprintf(f, "SeqX name	: S1\n");
@@ -1672,18 +1672,30 @@ void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len){
 }
 
 
-void save_frags_from_block(FILE * out_file, Block * b/*, int repetitions*/) {
+void save_frags_from_block(FILE * out_file, Block * b, heuristic_sorted_list * hsl) {
   Frags_list * fl = b->f_list;
   FragFile f;
-  uint64_t proximity;
+  uint64_t i, t;
+  int v;
 
-  while (fl != NULL){
+  i = 0;
+  while (fl != NULL) {
     f = *fl->f;
-    proximity = abs(f.xStart - f.yStart);
-    fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
-    fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%"PRIu64"\n", b->id, f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), proximity);
+    hsl->insert(i++, abs(f.xStart - f.yStart));
     fl = fl->next;
   }
+  t = hsl->get_first();
+  i = 0;
+  fl = b->f_list;
+  while (fl != NULL){
+    f = *fl->f;
+    v = i == t ? 0 : 1;
+    fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
+    fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", b->id, f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), v);
+    fl = fl->next;
+    i++;
+  }
+  hsl->clear();
 }
 
 /*int contains_repetitions(Synteny_block * ptr_sb, uint64_t seq1_label, uint64_t seq2_label) {
@@ -1712,6 +1724,7 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, s
   Synteny_list * ptr_sbl = sbl;
   Synteny_block * ptr_sb;
   Block * ptr_b;
+  heuristic_sorted_list hsl;
   uint64_t gen_id;
   //int repetitions;
 
@@ -1723,18 +1736,19 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, s
     ptr_sb = ptr_sbl->sb;
     // Check if SB contains repetitions
     //repetitions = contains_repetitions(ptr_sb, seq1_label, seq2_label);
+
+    // Write actual values
     while (ptr_sb != NULL){
         ptr_b = ptr_sb->b;
         gen_id = ptr_b->genome->id;
         if (gen_id == seq1_label){
-            save_frags_from_block(out_file, ptr_b/*, repetitions*/);
+            save_frags_from_block(out_file, ptr_b, &hsl);
         }
         ptr_sb = ptr_sb->next;
     }
 
     ptr_sbl = ptr_sbl->next;
   }
-
 }
 
 void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Synteny_list * sbl){

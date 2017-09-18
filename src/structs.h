@@ -168,7 +168,7 @@ typedef struct quickfrag{
     Sequence * y;
 } Quickfrag;
 
-// A collection of fragments 
+// A collection of fragments
 typedef struct frags_list{
     struct FragFile * f;
     struct frags_list * next;
@@ -411,8 +411,8 @@ class strand_matrix
 {
 
 public:
-    unsigned char ** sm; // For strands 
-    uint64_t * sm_orders; // For orders 
+    unsigned char ** sm; // For strands
+    uint64_t * sm_orders; // For orders
     uint64_t n_seqs;
     uint64_t squared_sequences;
     uint64_t acu_frags_forward;
@@ -448,8 +448,8 @@ struct e_duplication{
 };
 
 struct e_transposition{
-    Block * before_trans; 
-    Block * transposed;    
+    Block * before_trans;
+    Block * transposed;
 };
 
 struct e_insertion{
@@ -470,7 +470,7 @@ struct e_concatenation{
 // Struct to modify blocks given previous rearrangments
 struct rearrangement{
     int64_t mod_coordinates; //coordinate offset to add
-    int64_t mod_order; //order offset to add 
+    int64_t mod_order; //order offset to add
     uint64_t b1_id; //Range start of blocks affected
     uint64_t b2_id; //Range end of blocks affected
     uint64_t ends_at; //Ending id
@@ -478,7 +478,29 @@ struct rearrangement{
     uint64_t affects_who; //-1 for all, either specify genome label
 };
 
-// Queue-like class to handle all operations that have to be done 
+// Bucket of linked list for heuristic sorting
+struct hs_bucket{
+  uint64_t id;
+  uint64_t value;
+  struct hs_bucket * next;
+};
+
+class heuristic_sorted_list{
+  private:
+    hs_bucket * head = NULL;
+    void insert_new(uint64_t id, uint64_t value, hs_bucket * prev);
+    void insert_at(uint64_t id, uint64_t value, hs_bucket * prev);
+  public:
+    heuristic_sorted_list();
+    void insert(uint64_t id, uint64_t value);
+    uint64_t get_first() { return this->head->id; };
+    bool contains(uint64_t id);
+    void print();
+    void clear();
+    ~heuristic_sorted_list();
+};
+
+// Queue-like class to handle all operations that have to be done
 class events_queue{
 private:
     std::list<rearrangement> * rea_queue;
@@ -507,8 +529,8 @@ private:
 
 public:
     ee_log(FILE * logfile, char * path);
-    void register_event(Event e, void * event_data); 
-    void force_write();   
+    void register_event(Event e, void * event_data);
+    void force_write();
     ~ee_log();
 
 private:
@@ -526,7 +548,7 @@ struct Indel_handling{
     uint64_t n_sequences;
 };
 
-// Struct for reducing parameters in multiple alignment function 
+// Struct for reducing parameters in multiple alignment function
 struct arguments_multiple_alignment{
     sequence_manager * seq_man;
     char ** seq_for_reverse;
@@ -546,10 +568,10 @@ struct arguments_multiple_alignment{
     char ** recon_X;
     uint64_t * sequence_ids;  // Tells which one of the seqs in seq_X is after aligning
     char ** recon_Y;
-    char ** recon_Z; 
+    char ** recon_Z;
     char ** seq_X;
     char ** seq_Y;
-    char ** seq_Z; 
+    char ** seq_Z;
     int64_t * cell_path_y;
     struct positioned_cell * mc_f;
     struct cell_f ** table_f;
