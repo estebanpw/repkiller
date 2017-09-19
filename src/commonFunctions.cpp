@@ -1685,11 +1685,13 @@ void save_frags_from_block(FILE * out_file, Block * b, heuristic_sorted_list * h
     fl = fl->next;
   }
   t = hsl->get_first();
+  v = i == 1 ? 0 : 1;
   i = 0;
   fl = b->f_list;
   while (fl != NULL){
     f = *fl->f;
-    v = i == t ? 0 : 1;
+    if (v != 0)
+      v = i == t ? 1 : 2;
     fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
     fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", b->id, f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), v);
     fl = fl->next;
