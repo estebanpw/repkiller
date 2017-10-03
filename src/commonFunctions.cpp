@@ -174,12 +174,18 @@ void print_maptable_portion(unsigned char ** maptable, uint64_t from, uint64_t t
 void traverse_synteny_list(Synteny_list * sbl){
     Synteny_list * ptr_sbl = sbl;
     Synteny_block * ptr_sb;
+    Frags_list * ptr_frgl;
     //bool forward = true;
     while(ptr_sbl != NULL){
         fprintf(stdout, "SBL:%"PRIu64"\n", ptr_sbl->id);
         ptr_sb = ptr_sbl->sb;
         while(ptr_sb != NULL){
             fprintf(stdout, "\t");printBlock(ptr_sb->b);
+            ptr_frgl = ptr_sb->b->f_list;
+            while (ptr_frgl != NULL) {
+              fprintf(stdout, "\t\t"); printFragment(ptr_frgl->f);
+              ptr_frgl = ptr_frgl->next;
+            }
             ptr_sb = ptr_sb->next;
         }
         /*
@@ -1671,30 +1677,74 @@ void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len){
     fprintf(f, "========================================================\n");
 }
 
+void print_frags_grops_list(Frags_Groups_List * fgl) {
+  Frags_Groups_List * ptr_fgl;
+  Frags_Group * ptr_fg;
+  uint64_t i = 0;
 
-void save_frags_from_block(FILE * out_file, Block * b, heuristic_sorted_list * hsl) {
-  Frags_list * fl = b->f_list;
+  for (ptr_fgl = fgl; ptr_fgl != NULL; ptr_fgl = ptr_fgl->next) {
+    fprintf(stdout, "FGL: %"PRIu64"\n", i++);
+    for (ptr_fg = ptr_fgl->fg; ptr_fg != NULL; ptr_fg = ptr_fg->next) {
+      fprintf(stdout, "\t"); printFragment(ptr_fg->f);
+    }
+  }
+
+}
+
+Frags_Groups_List * redo_synteny_system(Synteny_list * sbl){
+  Synteny_list * ptr_sbl;
+  Synteny_block * ptr_sb;
+  Block * ptr_b;
+  Frags_Groups_List * ptr_fgl = NULL;
+  Frags_Groups_List * ptr_nfgl;
+  Frags_Group * ptr_fg = NULL;
+  Frags_Group * ptr_nfg;
+  Frags_list * ptr_fl;
+
+  // For each synteny block
+  for (ptr_sbl = sbl; ptr_sbl != NULL; ptr_sbl = ptr_sbl->next){
+    // For each block in synteny block
+    for (ptr_sb = ptr_sbl->sb; ptr_sb != NULL; ptr_sb = ptr_sb->next){
+      ptr_b = ptr_sb->b;
+      if (ptr_b->genome->id == 0){
+        // Add all fragments to fg
+        for (ptr_fl = ptr_b->f_list; ptr_fl != NULL; ptr_fl = ptr_fl->next){
+          ptr_nfg = (Frags_Group*)malloc(sizeof(Frags_Group));
+          ptr_nfg->next = ptr_fg;
+          ptr_nfg->f = ptr_fl->f;
+          ptr_fg = ptr_nfg;
+        }
+      }
+    }
+    ptr_nfgl = (Frags_Groups_List*)malloc(sizeof(Frags_Groups_List));
+    ptr_nfgl->next = ptr_fgl;
+    ptr_nfgl->fg = ptr_fg;
+    ptr_fgl = ptr_nfgl;
+    ptr_fg = NULL;
+  }
+  return ptr_fgl;
+}
+
+void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl) {
+  Frags_Group * ptr_fg;
   FragFile f;
   uint64_t i, t;
   int v;
 
   i = 0;
-  while (fl != NULL) {
-    f = *fl->f;
+  for (ptr_fg = fg; ptr_fg != NULL; ptr_fg = ptr_fg->next) {
+    f = *ptr_fg->f;
     hsl->insert(i++, abs(f.xStart - f.yStart));
-    fl = fl->next;
   }
   t = hsl->get_first();
   v = i == 1 ? 0 : 1;
   i = 0;
-  fl = b->f_list;
-  while (fl != NULL){
-    f = *fl->f;
+  for (ptr_fg = fg; ptr_fg != NULL; ptr_fg = ptr_fg->next){
+    f = *ptr_fg->f;
     if (v != 0)
       v = i == t ? 1 : 2;
     fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
-    fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", b->id, f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), v);
-    fl = fl->next;
+    fprintf(out_file, "0,%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), v);
     i++;
   }
   hsl->clear();
@@ -1721,39 +1771,22 @@ void save_frags_from_block(FILE * out_file, Block * b, heuristic_sorted_list * h
   return 0;
 }*/
 
-void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Synteny_list * sbl) {
+void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Frags_Groups_List * fgl) {
   Sequence * seq1, * seq2;
-  Synteny_list * ptr_sbl = sbl;
-  Synteny_block * ptr_sb;
-  Block * ptr_b;
+  Frags_Groups_List * ptr_fgl;
   heuristic_sorted_list hsl;
-  uint64_t gen_id;
   //int repetitions;
 
   seq1 = seq_mngr->get_sequence_by_label(seq1_label);
   seq2 = seq_mngr->get_sequence_by_label(seq2_label);
 
   write_header(out_file, seq1->len, seq2->len);
-  while (ptr_sbl != NULL){
-    ptr_sb = ptr_sbl->sb;
-    // Check if SB contains repetitions
-    //repetitions = contains_repetitions(ptr_sb, seq1_label, seq2_label);
-
-    // Write actual values
-    while (ptr_sb != NULL){
-        ptr_b = ptr_sb->b;
-        gen_id = ptr_b->genome->id;
-        if (gen_id == seq1_label){
-            save_frags_from_block(out_file, ptr_b, &hsl);
-        }
-        ptr_sb = ptr_sb->next;
-    }
-
-    ptr_sbl = ptr_sbl->next;
+  for (ptr_fgl = fgl; ptr_fgl != NULL; ptr_fgl = ptr_fgl->next){
+    save_frags_from_group(out_file, ptr_fgl->fg, &hsl);
   }
 }
 
-void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Synteny_list * sbl){
+void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Frags_Groups_List * fgl){
   // TODO better descriptions
   // Iterators
   uint64_t i, j;
@@ -1771,7 +1804,7 @@ void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manag
     sprintf(out_file_name, "%s-%"PRIu64"-%"PRIu64".csv", out_file_base_path, i, j);
     out_file = fopen64(out_file_name, "wt");
     if (out_file == NULL) continue;
-    save_frag_pair(out_file, i, j, seq_manager, sbl);
+    save_frag_pair(out_file, i, j, seq_manager, fgl);
     fclose(out_file);
   }
 

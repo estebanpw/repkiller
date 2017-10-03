@@ -230,6 +230,16 @@ typedef struct synteny_list{
     uint64_t id;
 } Synteny_list;
 
+typedef struct frags_group{
+  struct  FragFile * f;
+  struct frags_group * next;
+}Frags_Group;
+
+typedef struct frags_groups_list{
+  Frags_Group * fg;
+  struct frags_groups_list * next;
+}Frags_Groups_List;
+
 struct triplet{
     Synteny_list * A;
     Synteny_list * B;

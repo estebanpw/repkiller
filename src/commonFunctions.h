@@ -187,6 +187,16 @@ long double median_from_vector(uint64_t * v, uint64_t l);
 void print_memory_usage();
 
 /*
+  TODO dest
+*/
+Frags_Groups_List * redo_synteny_system(Synteny_list * sbl);
+
+/*
+  TODO desc
+*/
+void print_frags_grops_list(Frags_Groups_List * fgl);
+
+/*
   Prints the standard csv header
 */
 void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len);
@@ -194,16 +204,16 @@ void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len);
 /*
  TODO desc
 */
-void save_frags_from_block(FILE * out_file, Block * b);
+void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl);
 
 /*
  TODO desc
 */
-void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Synteny_list * sbl);
+void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Frags_Groups_List * fgl);
 
 /*
  TODO desc
 */
-void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Synteny_list * synteny_block_list);
+void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Frags_Groups_List * fgl);
 
 #endif /* COMMON_FUNCTIONS_H */

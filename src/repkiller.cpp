@@ -37,7 +37,7 @@ int main(int ac, char **av) {
     //The sequences manager to store ids, lengths, etc
     sequence_manager * seq_manager = new sequence_manager();
     //The number of iterations to trimm
-    uint64_t N_ITERA = 500; //Default
+    uint64_t N_ITERA = 0; //Default
     //Path to the multifrags file
     char multifrags_path[512]; multifrags_path[0] = '\0';
     //Initial hash table size (divisor of the longest sequence)
@@ -123,17 +123,6 @@ int main(int ac, char **av) {
 
     //Compute final coverage
     get_coverage_from_genome_grid(map_table, seq_manager, n_files, min_len);
-    //Write frags if it was set
-    if(trim_frags_file != NULL && trim_frags_file_write == true){
-        //Write number of frags and frags
-        fwrite(&total_frags, sizeof(uint64_t), 1, trim_frags_file);
-        fwrite(loaded_frags, sizeofFragment(), total_frags, trim_frags_file);
-    }
-    //seq_manager->print_sequences_data();
-    end = clock();
-    print_memory_usage();
-    fprintf(stdout, "[INFO] Trimming of fragments completed after %"PRIu64" iteration(s).\n       Number of final fragments: %"PRIu64". T = %e\n", N_ITERA, total_frags, (double)(end-begin)/CLOCKS_PER_SEC);
-
 
     //Frags to blocks conversion %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
@@ -161,14 +150,21 @@ int main(int ac, char **av) {
     begin = clock();
     Synteny_list * synteny_block_list = compute_synteny_list(ht, n_files, mp, &last_s_id);
     //traverse_synteny_list_and_write(synteny_block_list, n_files, "init");
-    traverse_synteny_list(synteny_block_list);
+    //traverse_synteny_list(synteny_block_list);
     end = clock();
     print_memory_usage();
     fprintf(stdout, "[INFO] Generated synteny blocks. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
 
-    // TODO remove repetitions
+    // Redo synteny blocks into frags group list %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    begin = clock();
+    Frags_Groups_List * ptr_fgl = redo_synteny_system(synteny_block_list);
+    end = clock();
+    //print_frags_grops_list(ptr_fgl);
+    print_memory_usage();
+    fprintf(stdout, "[INFO] Frags group list created. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
     printf("[INFO] Saving frags in file\n");
-    save_all_frag_pairs(out_file_base_path, seq_manager, synteny_block_list);
+
+    save_all_frag_pairs(out_file_base_path, seq_manager, ptr_fgl);
 
     // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
