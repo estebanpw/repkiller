@@ -1725,7 +1725,7 @@ Frags_Groups_List * redo_synteny_system(Synteny_list * sbl){
   return ptr_fgl;
 }
 
-void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl) {
+void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl, uint64_t gid) {
   Frags_Group * ptr_fg;
   FragFile f;
   uint64_t i, t;
@@ -1744,7 +1744,7 @@ void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_l
     if (v != 0)
       v = i == t ? 1 : 2;
     fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
-    fprintf(out_file, "0,%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), v);
+    fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", gid, f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), v);
     i++;
   }
   hsl->clear();
@@ -1775,6 +1775,7 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, s
   Sequence * seq1, * seq2;
   Frags_Groups_List * ptr_fgl;
   heuristic_sorted_list hsl;
+  uint64_t gid = 0;
   //int repetitions;
 
   seq1 = seq_mngr->get_sequence_by_label(seq1_label);
@@ -1782,7 +1783,8 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, s
 
   write_header(out_file, seq1->len, seq2->len);
   for (ptr_fgl = fgl; ptr_fgl != NULL; ptr_fgl = ptr_fgl->next){
-    save_frags_from_group(out_file, ptr_fgl->fg, &hsl);
+    save_frags_from_group(out_file, ptr_fgl->fg, &hsl, gid);
+    gid++;
   }
 }
 

@@ -11,6 +11,8 @@
 #include "comparisonFunctions.h"
 #include "evolutionaryEventsFunctions.h"
 
+#define LOG(s) fprintf(stdout, "[INFO] %s T = %e\n", s, (double)(end-begin)/CLOCKS_PER_SEC);
+
 uint64_t total_bytes_in_use = 0;
 int DEBUG_ACTIVE = 0;
 int HARD_DEBUG_ACTIVE = 0;
@@ -29,7 +31,7 @@ int main(int ac, char **av) {
     //Last ID of synteny lists
     uint64_t last_s_id;
     //Array of fragments to hold them all, pointer to free when changing pointer
-    struct FragFile * loaded_frags = NULL, * aux_pointer = NULL;
+    struct FragFile * loaded_frags = NULL;
     //Clocks to measure time
     clock_t begin, end;
     //Minimum length to fragment to accept a trimming
@@ -49,11 +51,11 @@ int main(int ac, char **av) {
     //
     char * out_file_name = new char[MAX_LINE];
 
-    //Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    //Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%
     FILE * frags_file = NULL, * lengths_file = NULL, * trim_frags_file = NULL;
     init_args(ac, av, &frags_file, &out_file_base_path, &min_len, &N_ITERA, multifrags_path, &ht_size, &trim_frags_file, &trim_frags_file_write);
 
-    //Concat .lengths to path of multifrags %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    //Concat .lengths to path of multifrags %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     char path_lengths[READLINE];
     path_lengths[0]='\0';
     strcpy(path_lengths, multifrags_path);
@@ -61,70 +63,22 @@ int main(int ac, char **av) {
     lengths_file = fopen64(path_lengths, "rb");
     if(lengths_file == NULL) terror("Could not open input lengths file");
 
-    //Load lengths and substract accumulated length %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    //Load lengths and substract accumulated length %%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     n_files =  seq_manager->load_sequences_descriptors(lengths_file);
     end = clock();
-    fprintf(stdout, "[INFO] Loaded sequence descriptors. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
+    LOG("Loaded sequence descriptors.");
     fclose(lengths_file);
 
-    //Load fragments into array %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    //Load fragments into array %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     load_fragments_local(frags_file, &total_frags, &loaded_frags);
     end = clock();
     print_memory_usage();
-    fprintf(stdout, "[INFO] Loaded fragments into memory. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
+    LOG("Loaded fragments into memory.");
     fclose(frags_file);
 
-
-    //Initial mapping of fragments to table of genomes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    begin = clock();
-    unsigned char ** map_table = (unsigned char **) std::calloc(n_files, sizeof(unsigned char *));
-    total_bytes_in_use += n_files*sizeof(unsigned char *);
-    //Allocate map table
-    for(i=0; i<n_files; i++){
-        map_table[i] = (unsigned char *) std::calloc(seq_manager->get_sequence_by_label(i)->len, sizeof(unsigned char));
-        total_bytes_in_use += seq_manager->get_sequence_by_label(i)->len * sizeof(unsigned char);
-        if(map_table[i] == NULL) terror("Could not allocate map table");
-    }
-    map_frags_to_genomes(map_table, loaded_frags, total_frags, seq_manager);
-    //Compute initial coverage
-    get_coverage_from_genome_grid(map_table, seq_manager, n_files, min_len);
-    seq_manager->print_sequences_data();
-    end = clock();
-    print_memory_usage();
-    fprintf(stdout, "[INFO] Initial mapping completed. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
-
-    //Trimming %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    begin = clock();
-    uint64_t ratio_itera = N_ITERA/5;
-    //Check if frags had already been computed and exist
-    if(trim_frags_file != NULL && trim_frags_file_write == false){
-        // Load fragments trimmed
-        total_bytes_in_use -= total_frags * sizeofFragment();
-        if(0 == fread(&total_frags, sizeof(uint64_t), 1, trim_frags_file)) terror("Incorrect number of fragments to load");
-        loaded_frags = (struct FragFile *) std::realloc(loaded_frags, total_frags*sizeofFragment());
-        total_bytes_in_use += total_frags * sizeofFragment();
-        if(loaded_frags == NULL) terror("Could not load existing trimmed frags");
-        if(0 == fread(loaded_frags, sizeofFragment(), total_frags, trim_frags_file)) terror("Specified fragments are of size zero");
-    }else{
-        // Compute fragments trim
-        total_bytes_in_use -= total_frags * sizeofFragment();
-        for(i=0;i<N_ITERA;i++){
-            if(i % ratio_itera == 0) fprintf(stdout, "[INFO] Iteration %"PRIu64"\n", i);
-            aux_pointer = trim_fragments_and_map(map_table, loaded_frags, &total_frags, min_len);
-            //fprintf(stdout, "FRAGS: %"PRIu64"\n", total_frags);
-            free(loaded_frags); //A new list is being allocated in the function
-            loaded_frags = aux_pointer;
-        }
-        total_bytes_in_use += total_frags * sizeofFragment();
-    }
-
-
-    //Compute final coverage
-    get_coverage_from_genome_grid(map_table, seq_manager, n_files, min_len);
-
-    //Frags to blocks conversion %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    //Frags to blocks conversion %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     memory_pool * mp = new memory_pool(POOL_SIZE);
     uint64_t max_len_sequence = seq_manager->get_maximum_length();
@@ -142,29 +96,29 @@ int main(int ac, char **av) {
     end = clock();
     //fprintf(stdout, "[INFO] Insertion of fragments into hash table completed. Load factor = %e. T = %e\n", ht->get_load_factor(), (double)(end-begin)/CLOCKS_PER_SEC);
     print_memory_usage();
-    fprintf(stdout, "[INFO] Insertion of fragments into hash table completed. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
+    LOG("Insertion of fragments into hash table completed.");
 
-
-
-    //Generate synteny blocks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    //Generate synteny blocks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     Synteny_list * synteny_block_list = compute_synteny_list(ht, n_files, mp, &last_s_id);
     //traverse_synteny_list_and_write(synteny_block_list, n_files, "init");
     //traverse_synteny_list(synteny_block_list);
     end = clock();
     print_memory_usage();
-    fprintf(stdout, "[INFO] Generated synteny blocks. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
+    LOG("Generated synteny blocks.");
 
-    // Redo synteny blocks into frags group list %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    // Redo synteny blocks into frags group list %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     Frags_Groups_List * ptr_fgl = redo_synteny_system(synteny_block_list);
     end = clock();
     //print_frags_grops_list(ptr_fgl);
     print_memory_usage();
-    fprintf(stdout, "[INFO] Frags group list created. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
-    printf("[INFO] Saving frags in file\n");
+    LOG("Frags groups list created.");
 
+    begin = clock();
     save_all_frag_pairs(out_file_base_path, seq_manager, ptr_fgl);
+    end = clock();
+    LOG("Fragments saved into csv file.");
 
     // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -195,11 +149,6 @@ int main(int ac, char **av) {
     getchar();
     */
 
-
-    for(i=0; i<n_files; i++){
-        std::free(map_table[i]);
-    }
-    std::free(map_table);
     std::free(loaded_frags);
 
     //fclose(out_file);

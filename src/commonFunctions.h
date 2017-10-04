@@ -204,7 +204,7 @@ void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len);
 /*
  TODO desc
 */
-void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl);
+void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl, uint64_t gid);
 
 /*
  TODO desc
