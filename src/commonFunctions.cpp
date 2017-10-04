@@ -38,7 +38,7 @@ int exists_file(const char * file_name){
 }
 
 void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile ** loaded_frags){
-    
+
     struct FragFile temp_frag;
     uint64_t unused_len, total_frags;
 
@@ -49,8 +49,8 @@ void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile 
 
     //Divide by size of frag to get the number of fragments
     //Plus one because it might have padding, thus rounding up to bottom and missing 1 struct
-    total_frags = 1 + total_frags/sizeofFragment(); 
-    
+    total_frags = 1 + total_frags/sizeofFragment();
+
     //Allocate memory for all frags
     struct FragFile * temp_frags_array = (struct FragFile *) std::malloc(total_frags * sizeofFragment());
     if(temp_frags_array == NULL) terror("Could not allocate heap for all fragments");
@@ -68,31 +68,31 @@ void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile 
 
     while(!feof(fragsfile)){
         readFragment(&temp_frag, fragsfile);
-        
+
         //printFragment(&temp_frag); getchar();
         //Transform coordinates to local
         //Actually, it is not required anymore.
-        
+
         /*if(prevx != temp_frag.seqX || prevy != temp_frag.seqY){
             printf("Frag: (%"PRIu64", %"PRIu64") coord: (%"PRIu64", %"PRIu64") diag:: %"PRId64"\n", temp_frag.seqX, temp_frag.seqY, temp_frag.xStart, temp_frag.yStart, temp_frag.diag);
             getchar();
         }
         prevx = temp_frag.seqX; prevy = temp_frag.seqY;*/
 
-        
+
         //printf("SeqX SeqY: (%"PRIu64", %"PRIu64")\n", temp_frag.seqX, temp_frag.seqY);
-        //printf("Frags. (%"PRIu64", %"PRIu64")\n", sequences[temp_frag.seqX].acum, sequences[temp_frag.seqY].acum);        
+        //printf("Frags. (%"PRIu64", %"PRIu64")\n", sequences[temp_frag.seqX].acum, sequences[temp_frag.seqY].acum);
 
         temp_frag.xStart = temp_frag.xStart;
         temp_frag.xEnd = temp_frag.xEnd;
-        
+
 
         temp_frag.yStart = temp_frag.yStart;
         temp_frag.yEnd = temp_frag.yEnd;
 
 
         //temp_frag.xStart = temp_frag.xStart - sequences[temp_frag.seqX].acum;
-        //temp_frag.xEnd = temp_frag.xEnd - sequences[temp_frag.seqX].acum; 
+        //temp_frag.xEnd = temp_frag.xEnd - sequences[temp_frag.seqX].acum;
 
         //temp_frag.yStart = temp_frag.yStart - sequences[temp_frag.seqY].acum;
         //temp_frag.yEnd = temp_frag.yEnd - sequences[temp_frag.seqY].acum;
@@ -100,7 +100,7 @@ void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile 
 
         //Copy temp fragment into array
         memcpy(&temp_frags_array[*n_frags], &temp_frag, sizeofFragment());
-        
+
         *n_frags = *n_frags + 1;
 
         if(*n_frags > total_frags){ terror("Something went wrong. More fragments than expected");}
@@ -137,7 +137,7 @@ void get_coverage_from_genome_grid(unsigned char ** maptable, sequence_manager *
 void write_maptable_to_disk(unsigned char ** maptable, sequence_manager * seq_manager, const char * out_file_path){
     uint64_t i, j;
     FILE * out_file;
-    
+
     char output_file[512];
 
     for(i=0; i<seq_manager->get_number_of_sequences(); i++){
@@ -174,12 +174,18 @@ void print_maptable_portion(unsigned char ** maptable, uint64_t from, uint64_t t
 void traverse_synteny_list(Synteny_list * sbl){
     Synteny_list * ptr_sbl = sbl;
     Synteny_block * ptr_sb;
+    Frags_list * ptr_frgl;
     //bool forward = true;
     while(ptr_sbl != NULL){
         fprintf(stdout, "SBL:%"PRIu64"\n", ptr_sbl->id);
         ptr_sb = ptr_sbl->sb;
         while(ptr_sb != NULL){
             fprintf(stdout, "\t");printBlock(ptr_sb->b);
+            ptr_frgl = ptr_sb->b->f_list;
+            while (ptr_frgl != NULL) {
+              fprintf(stdout, "\t\t"); printFragment(ptr_frgl->f);
+              ptr_frgl = ptr_frgl->next;
+            }
             ptr_sb = ptr_sb->next;
         }
         /*
@@ -187,7 +193,7 @@ void traverse_synteny_list(Synteny_list * sbl){
             forward = !forward;
             printf("And changing direction!!!!!!!\n");
         }
-        
+
         if(forward){
             ptr_sbl = ptr_sbl->next;
         }else{
@@ -219,7 +225,7 @@ void traverse_synteny_list_and_write(Synteny_list * sbl, uint64_t n_sequences, c
                 if(i==ptr_sb->b->genome->id) printBlockJoseMode(ptr_sb->b, writer);
                 ptr_sb = ptr_sb->next;
             }
-            
+
             ptr_sbl = ptr_sbl->next;
         }
         fclose(writer);
@@ -281,7 +287,7 @@ Annotation * binary_search_annotations(uint64_t start, uint64_t end, Annotation 
    Annotation aux;
    aux.start = start;
    aux.end = end;
-   
+
    while (first <= last) {
 
        compare = compare_ranges(&aux, &anot[middle]);
@@ -306,7 +312,7 @@ void quick_sort_annotations(Annotation * array, uint64_t x, uint64_t y) {
 
         while (compare_two_annotations(&pivot, &array[x1]) > 0) x1++;
         while (compare_two_annotations(&pivot, &array[y1]) < 0) y1--;
-        if (x1 < y1) { 
+        if (x1 < y1) {
             memcpy(&aux, &array[x1], sizeofAnnotation());
             memcpy(&array[x1], &array[y1], sizeofAnnotation());
             memcpy(&array[y1], &aux, sizeofAnnotation());
@@ -321,27 +327,27 @@ void quick_sort_annotations(Annotation * array, uint64_t x, uint64_t y) {
 }
 
 uint64_t quick_pow4(uint32_t n){
-    static uint64_t pow4[33]={1L, 4L, 16L, 64L, 256L, 1024L, 4096L, 16384L, 65536L, 
-    262144L, 1048576L, 4194304L, 16777216L, 67108864L, 268435456L, 1073741824L, 4294967296L, 
-    17179869184L, 68719476736L, 274877906944L, 1099511627776L, 4398046511104L, 17592186044416L, 
-    70368744177664L, 281474976710656L, 1125899906842624L, 4503599627370496L, 18014398509481984L, 
+    static uint64_t pow4[33]={1L, 4L, 16L, 64L, 256L, 1024L, 4096L, 16384L, 65536L,
+    262144L, 1048576L, 4194304L, 16777216L, 67108864L, 268435456L, 1073741824L, 4294967296L,
+    17179869184L, 68719476736L, 274877906944L, 1099511627776L, 4398046511104L, 17592186044416L,
+    70368744177664L, 281474976710656L, 1125899906842624L, 4503599627370496L, 18014398509481984L,
     72057594037927936L, 288230376151711744L, 1152921504606846976L, 4611686018427387904L};
     return pow4[n];
 }
 
 uint64_t quick_pow4byLetter(uint32_t n, const char c){
-    static uint64_t pow4_G[33]={2*1L, 2*4L, 2*16L, 2*64L, 2*256L, 2*1024L, 2*4096L, 2*16384L, 2*65536L, 
-    (uint64_t)2*262144L, (uint64_t)2*1048576L,(uint64_t)2*4194304L, (uint64_t)2*16777216L, (uint64_t)2*67108864L, (uint64_t)2*268435456L, (uint64_t)2*1073741824L, (uint64_t)2*4294967296L, 
-    (uint64_t)2*17179869184L, (uint64_t)2*68719476736L, (uint64_t)2*274877906944L, (uint64_t)2*1099511627776L, (uint64_t)2*4398046511104L, (uint64_t)2*17592186044416L, 
-    (uint64_t)2*70368744177664L, (uint64_t)2*281474976710656L, (uint64_t)2*1125899906842624L, (uint64_t)2*4503599627370496L, (uint64_t)2*18014398509481984L, 
+    static uint64_t pow4_G[33]={2*1L, 2*4L, 2*16L, 2*64L, 2*256L, 2*1024L, 2*4096L, 2*16384L, 2*65536L,
+    (uint64_t)2*262144L, (uint64_t)2*1048576L,(uint64_t)2*4194304L, (uint64_t)2*16777216L, (uint64_t)2*67108864L, (uint64_t)2*268435456L, (uint64_t)2*1073741824L, (uint64_t)2*4294967296L,
+    (uint64_t)2*17179869184L, (uint64_t)2*68719476736L, (uint64_t)2*274877906944L, (uint64_t)2*1099511627776L, (uint64_t)2*4398046511104L, (uint64_t)2*17592186044416L,
+    (uint64_t)2*70368744177664L, (uint64_t)2*281474976710656L, (uint64_t)2*1125899906842624L, (uint64_t)2*4503599627370496L, (uint64_t)2*18014398509481984L,
     (uint64_t)2*72057594037927936L, (uint64_t) 2*288230376151711744L, (uint64_t) 2*1152921504606846976L, (uint64_t) 2*4611686018427387904L};
-    
-    static uint64_t pow4_T[33]={3*1L, 3*4L, 3*16L, 3*64L, 3*256L, 3*1024L, 3*4096L, 3*16384L, 3*65536L, 
-    (uint64_t)3*262144L, (uint64_t) 3*1048576L, (uint64_t)3*4194304L, (uint64_t)3*16777216L, (uint64_t)3*67108864L, (uint64_t)3*268435456L, (uint64_t)3*1073741824L, (uint64_t)3*4294967296L, 
-    (uint64_t)3*17179869184L, (uint64_t)3*68719476736L, (uint64_t)3*274877906944L, (uint64_t)3*1099511627776L, (uint64_t)3*4398046511104L, (uint64_t)3*17592186044416L, 
-    (uint64_t)3*70368744177664L, (uint64_t)3*281474976710656L, (uint64_t)3*1125899906842624L, (uint64_t)3*4503599627370496L, (uint64_t)3*18014398509481984L, 
+
+    static uint64_t pow4_T[33]={3*1L, 3*4L, 3*16L, 3*64L, 3*256L, 3*1024L, 3*4096L, 3*16384L, 3*65536L,
+    (uint64_t)3*262144L, (uint64_t) 3*1048576L, (uint64_t)3*4194304L, (uint64_t)3*16777216L, (uint64_t)3*67108864L, (uint64_t)3*268435456L, (uint64_t)3*1073741824L, (uint64_t)3*4294967296L,
+    (uint64_t)3*17179869184L, (uint64_t)3*68719476736L, (uint64_t)3*274877906944L, (uint64_t)3*1099511627776L, (uint64_t)3*4398046511104L, (uint64_t)3*17592186044416L,
+    (uint64_t)3*70368744177664L, (uint64_t)3*281474976710656L, (uint64_t)3*1125899906842624L, (uint64_t)3*4503599627370496L, (uint64_t)3*18014398509481984L,
     (uint64_t)3*72057594037927936L, (uint64_t) 3*288230376151711744L, (uint64_t) 3*1152921504606846976L, (uint64_t) 3*4611686018427387904L};
-    
+
     if(c == 'A') return 0;
     if(c == 'C') return quick_pow4(n);
     if(c == 'G') return pow4_G[n];
@@ -350,13 +356,13 @@ uint64_t quick_pow4byLetter(uint32_t n, const char c){
 }
 
 uint64_t hashOfWord(const char * word, uint32_t k){
-    
+
     uint64_t value = 0, jIdx;
     for(jIdx=0;jIdx<k;jIdx++){
         value += quick_pow4byLetter(k-(jIdx+1), word[jIdx]);
     }
     return value;
-    
+
 }
 
 inline int64_t compare_letters(char a, char b){
@@ -398,8 +404,8 @@ void alignment_from_hit(sequence_manager * seq_man, Word * a, Word * b, Quickfra
 
     //Forward search
     while(keep_going == 1){
-        
-        
+
+
         if(score_right > 0 && curr_pos_a < end_block_a && curr_pos_b < end_block_b){
             if(curr_pos_a  > end_block_a ||  curr_pos_b > end_block_b) break;
             if(compare_letters(a->b->genome->seq[curr_pos_a], b->b->genome->seq[curr_pos_b]) == POINT){ score_right+=POINT; idents++; }else{ score_right-=POINT;}
@@ -423,7 +429,7 @@ void alignment_from_hit(sequence_manager * seq_man, Word * a, Word * b, Quickfra
 
     //Backward search
     while(keep_going == 1){
-        
+
         if(score_left > 0 && curr_pos_a >= start_block_a && curr_pos_b >= start_block_b){
             if(curr_pos_a < start_block_a || curr_pos_b < start_block_b ) break;
             if(compare_letters(a->b->genome->seq[curr_pos_a], b->b->genome->seq[curr_pos_b]) == POINT){ score_left+=POINT; idents++; }else{ score_left-=POINT;}
@@ -440,7 +446,7 @@ void alignment_from_hit(sequence_manager * seq_man, Word * a, Word * b, Quickfra
         }
     }
 
-    
+
 
     qf->t_len = final_end_a - final_start_a + 1;
     qf->sim = (final_idents / (long double) qf->t_len)*100;
@@ -461,7 +467,7 @@ void alignment_from_hit(sequence_manager * seq_man, Word * a, Word * b, Quickfra
 
 
 inline char complement(char c){
-    
+
     switch(c){
     case ('A'): return 'T';
     break;
@@ -476,12 +482,12 @@ inline char complement(char c){
     case ('-'): return '-'; // Gaps
     break;
     case ('\0'): return '\0';
-    
+
     }
-    
+
     printf("T B: (%c) ____\n", c);
     terror("Unrecognized nucleotide in hit");
-    return 0; 
+    return 0;
 }
 
 
@@ -520,8 +526,8 @@ void alignment_from_hit_reverse(sequence_manager * seq_man, Word * a, Word * b, 
 
     //Forward search
     while(keep_going == 1){
-        
-        
+
+
         if(score_right > 0 && curr_pos_a >= start_block_a && curr_pos_b < end_block_b){
             if(curr_pos_a  < start_block_a ||  curr_pos_b > end_block_b) break;
             if(compare_letters(complement(a->b->genome->seq[curr_pos_a]), b->b->genome->seq[curr_pos_b]) == POINT){ score_right+=POINT; idents++; }else{ score_right-=POINT;}
@@ -550,7 +556,7 @@ void alignment_from_hit_reverse(sequence_manager * seq_man, Word * a, Word * b, 
 
     //Backward search
     while(keep_going == 1){
-        
+
         if(score_left > 0 && curr_pos_a < end_block_a && curr_pos_b >= start_block_b){
             if(curr_pos_a >= end_block_a || curr_pos_b < start_block_b ) break;
             if(compare_letters(complement(a->b->genome->seq[curr_pos_a]), b->b->genome->seq[curr_pos_b]) == POINT){ score_left+=POINT; idents++; }else{ score_left-=POINT;}
@@ -606,12 +612,12 @@ void inplace_reverse_and_complement(char *d, uint64_t l){
         d[l-i-1] = c;
         //printf("%c%c", d[i], d[l-i-1]);
     }
-    
+
     //printf("\n");
     for(i=0;i<l;i++){
         //printf("eeee: %d", (int)d[i]);
         d[i] = complement(d[i]);
-        
+
 
     }
 }
@@ -632,9 +638,9 @@ inline void strrev(char *p, char *d, uint32_t k){
     	case ('T'): c=('A');
     	break;
     	}
-        d[i] = c; 
+        d[i] = c;
     }
-  
+
 }
 
 void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint32_t kmer_size, dictionary_hash * dhw, Quickfrag * result){
@@ -681,7 +687,7 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
             //Check if we have a kmer big enough
             if(kmer_index == kmer_size){
 
-                //Insert word in dictionary 
+                //Insert word in dictionary
                 hit_list = dhw->put_and_hit(curr_kmer, 'f', advanced_steps, unlinked->b);
 
                 for(i=0;i<dhw->get_candidates_number();i++){
@@ -689,12 +695,12 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
                     hit = hit_list[i];
 
                     if(hit != NULL){
-                        
+
                         //We have a hit we should try an alignment
                         //only if the hit is not overlapping
                         //or it is overlapping but on different diagonal
                         if(first){
-                            
+
                             //There is no frag yet, so try first one
                             align_word.pos = advanced_steps;
                             align_word.strand = 'f';
@@ -709,7 +715,7 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
 
                             //There is already a frag, check for overlapping and diagonal
                             if(overlapped_words(result->x_start, result->x_start+result->t_len, advanced_steps-kmer_size-1, advanced_steps-1) != 0){
-                                //If it is not overlapped 
+                                //If it is not overlapped
                                 curr_diag = (int64_t) advanced_steps - (int64_t) hit->w.pos;
                                 if(curr_diag != result->diag){
                                     //We can try new alignment
@@ -721,8 +727,8 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
                                     }else{
                                         alignment_from_hit_reverse(seq_man, &hit->w, &align_word, &aligned_qf, kmer_size);
                                     }
-                                    
-                                    //Only copy if new alignment is better 
+
+                                    //Only copy if new alignment is better
 
                                     if(aligned_qf.sim > result->sim){
                                         memcpy(result, &aligned_qf, precomputed_sizeofQuickfrag);
@@ -730,7 +736,7 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
                                 }
                             }
                         }
-                        
+
                     }
                 }
 
@@ -746,12 +752,12 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
                     if(hit->w.strand == 'r') continue; //Skip since a 'r' - 'r' word is the same as 'f' - 'f'
 
                     if(hit != NULL){
-                        
+
                         //We have a hit we should try an alignment
                         //only if the hit is not overlapping
                         //or it is overlapping but on different diagonal
                         if(first){
-                            
+
                             //There is no frag yet, so try first one
                             align_word.pos = advanced_steps;
                             align_word.strand = 'r';
@@ -765,7 +771,7 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
                             //getchar();
                             //There is already a frag, check for overlapping and diagonal
                             if(overlapped_words(result->x_start, result->x_start+result->t_len, advanced_steps-kmer_size-1, advanced_steps-1) != 0){
-                                //If it is not overlapped 
+                                //If it is not overlapped
                                 curr_diag = (int64_t) advanced_steps - (int64_t) hit->w.pos;
                                 if(curr_diag != result->diag){
                                     //We can try new alignment
@@ -773,17 +779,17 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
                                     align_word.strand = 'r';
                                     align_word.b->genome = unlinked->b->genome;
                                     alignment_from_hit_reverse(seq_man, &align_word, &hit->w, &aligned_qf, kmer_size);
-                                    
+
                                     if(aligned_qf.sim > result->sim){
                                         memcpy(result, &aligned_qf, precomputed_sizeofQuickfrag);
                                     }
                                 }
                             }
                         }
-                        
+
                     }
                 }
-                //Displace 
+                //Displace
                 memmove(&curr_kmer[0], &curr_kmer[1], kmer_size-1);
                 memmove(&rev_kmer[0], &rev_kmer[1], kmer_size-1);
                 kmer_index--;
@@ -794,10 +800,10 @@ void align_region(sequence_manager * seq_man, Synteny_block * unlinked_sb, uint3
         unlinked = unlinked->next;
         kmer_index = 0;
     }
-    
 
-    
-    
+
+
+
 
 }
 
@@ -857,7 +863,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
 
                 //printf("Putting %s at %"PRIu64"\n", curr_kmer, advanced_steps);
 
-                //Insert word in dictionary 
+                //Insert word in dictionary
                 //printf("%s\n", curr_kmer);
                 hit_list = dhw->put_and_hit(curr_kmer, 'f', advanced_steps, sb_ptr->b);
 
@@ -877,7 +883,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                         //or it is overlapping but on different diagonal
                         if(qfmat_state[sb_ptr->b->genome->id][hit->w.b->genome->id] == 0){
                             //printf("BINGO!!!!!!!!!!!!!\n");
-                            
+
                             //There is no frag yet, so try first one
                             align_word.pos = advanced_steps;
                             align_word.strand = 'f';
@@ -887,7 +893,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                             }else{
                                 alignment_from_hit_reverse(seq_man, &hit->w, &align_word, &aligned_qf, kmer_size);
                             }
-                            
+
                             //printQuickfrag(&aligned_qf);
                             qfmat_state[sb_ptr->b->genome->id][hit->w.b->genome->id] = 1;
                             qfmat_state[hit->w.b->genome->id][sb_ptr->b->genome->id] = 1;
@@ -899,7 +905,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                             //getchar();
                             //There is already a frag, check for overlapping and diagonal
                             if(overlapped_words(qf->x_start, qf->x_start+qf->t_len, advanced_steps-kmer_size-1, advanced_steps-1) != 0){
-                                //If it is not overlapped 
+                                //If it is not overlapped
                                 curr_diag = (int64_t) advanced_steps - (int64_t) hit->w.pos;
                                 if(curr_diag != qf->diag){
                                     //We can try new alignment
@@ -916,7 +922,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                                     //getchar();
                                     //getchar();
 
-                                    //Only copy if new alignment is better 
+                                    //Only copy if new alignment is better
 
                                     if(aligned_qf.sim > qf->sim){
                                         memcpy(qf, &aligned_qf, precomputed_sizeofQuickfrag);
@@ -925,11 +931,11 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                                 }
                             }
                         }
-                        
+
                     }
                 }
 
-                
+
 
                 //Insert reversed word in dictionary
                 strrev(curr_kmer, rev_kmer, kmer_size);
@@ -954,7 +960,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                         //or it is overlapping but on different diagonal
                         if(qfmat_state[sb_ptr->b->genome->id][hit->w.b->genome->id] == 0){
                             //printf("BINGO!!!!!!!!!!!!!\n");
-                            
+
                             //There is no frag yet, so try first one
                             align_word.pos = advanced_steps;
                             align_word.strand = 'r';
@@ -971,7 +977,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                             //getchar();
                             //There is already a frag, check for overlapping and diagonal
                             if(overlapped_words(qf->x_start, qf->x_start+qf->t_len, advanced_steps-kmer_size-1, advanced_steps-1) != 0){
-                                //If it is not overlapped 
+                                //If it is not overlapped
                                 curr_diag = (int64_t) advanced_steps - (int64_t) hit->w.pos;
                                 if(curr_diag != qf->diag){
                                     //We can try new alignment
@@ -984,7 +990,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                                     //getchar();
                                     //getchar();
 
-                                    //Only copy if new alignment is better 
+                                    //Only copy if new alignment is better
 
                                     if(aligned_qf.sim > qf->sim){
                                         memcpy(qf, &aligned_qf, precomputed_sizeofQuickfrag);
@@ -993,14 +999,14 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
                                 }
                             }
                         }
-                        
+
                     }
                 }
 
 
 
 
-                //Displace 
+                //Displace
                 memmove(&curr_kmer[0], &curr_kmer[1], kmer_size-1);
                 memmove(&rev_kmer[0], &rev_kmer[1], kmer_size-1);
                 kmer_index--;
@@ -1021,7 +1027,7 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
     }
     printQuickFragMatrix(qfmat, qfmat_state, seq_man->get_number_of_sequences());
     //getchar();
-    
+
 }
 
 /*
@@ -1070,9 +1076,9 @@ void fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_revers
     for(i=0;i<seq_man->get_number_of_sequences();i++){
         active_threads[i] = 0;
         for(j=0;j<seq_man->get_number_of_sequences();j++){
-            
-            qfmat_state[i][j] = 0;  
-        } 
+
+            qfmat_state[i][j] = 0;
+        }
     }
 
     uint64_t index = 0;
@@ -1091,7 +1097,7 @@ void fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_revers
             }
             */
 
-            
+
             aa[index].seq_A = &sb_ptr->b->genome->seq[sb_ptr->b->start];
             aa[index].s_x = sb_ptr->b->genome;
             aa[index].start_A = 0;
@@ -1113,7 +1119,7 @@ void fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_revers
             int error;
             if( 0 != (error = pthread_create(&threads[index], NULL, compute_NW_on_pthreads, (void *) &aa[index] ))){
                 fprintf(stdout, "Thread %"PRIu64" returned %d:", index, error); terror("Could not launch");
-            }                       
+            }
             /*
             compute_NW_on_pthreads(&sb_ptr->b->genome->seq[sb_ptr->b->start], 0, sb_ptr->b->end - sb_ptr->b->start, &sb_ptr_intern->b->genome->seq[sb_ptr_intern->b->start], 0, sb_ptr_intern->b->end - sb_ptr_intern->b->start, (int64_t) iGap, (int64_t) eGap, mc[index], f0[index], f1[index], &alignment[index], &alignment_reverse[index], seq_for_reverse[index]);
             */
@@ -1123,7 +1129,7 @@ void fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_revers
             // problem here with \0 (solved)
             memcpy(&seq_for_reverse[sb_ptr_intern->b->start], &sb_ptr_intern->b->genome->seq[sb_ptr_intern->b->start], sb_ptr_intern->b->end - sb_ptr_intern->b->start);
 
-                        
+
             inplace_reverse_and_complement(&seq_for_reverse[sb_ptr_intern->b->start], sb_ptr_intern->b->end - sb_ptr_intern->b->start -2);
             alignment_reverse = NWscore2rows(&sb_ptr->b->genome->seq[sb_ptr->b->start], 0, sb_ptr->b->end - sb_ptr->b->start, &seq_for_reverse[sb_ptr_intern->b->start], 0, sb_ptr_intern->b->end - sb_ptr_intern->b->start, iGap, eGap, mc, f0, f1);
             */
@@ -1132,12 +1138,12 @@ void fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_revers
             sb_ptr_intern = sb_ptr_intern->next;
         }
         sb_ptr = sb_ptr->next;
-        // Make wait/join here 
+        // Make wait/join here
         for(i=0;i<n_sequences;i++){
             if(active_threads[i] == 1) pthread_join(threads[i], NULL);
         }
         for(i=0;i<index;i++){
-            // Paste data into quickfrag matrix 
+            // Paste data into quickfrag matrix
             if(alignment_reverse[i].ident > alignment[i].ident) alignment[i] = alignment_reverse[i];
 
             qf[i].x_start = alignment[i].xs;
@@ -1163,17 +1169,17 @@ void fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_revers
         index = 0; // Restart index to align more
     }
 
-    
+
     /*
-    // Restart pthread index 
+    // Restart pthread index
     index = 0;
     sb_ptr = sbl->sb;
     while(sb_ptr != NULL){
         sb_ptr_intern = sb_ptr->next;
         while(sb_ptr_intern != NULL){
-            
-    
-           
+
+
+
             if(alignment_reverse[index].ident > alignment[index].ident) alignment[index] = alignment_reverse[index];
             qf[index].x_start = alignment[index].xs;
             qf[index].y_start = alignment[index].ys;
@@ -1217,7 +1223,7 @@ Slist * UPGMA_joining_clustering(Quickfrag ** M, double ** submat, unsigned char
     double f_min = -1;
     uint64_t i_min = 0, j_min = 1;
     uint64_t nodes_in_dendro = 1;
-    
+
     Slist ** dendrogram = (Slist **) mp->request_bytes(N*sizeof(Slist*));
 
     uint64_t * dendro_lengths = (uint64_t *) mp->request_bytes(N*sizeof(uint64_t));
@@ -1228,7 +1234,7 @@ Slist * UPGMA_joining_clustering(Quickfrag ** M, double ** submat, unsigned char
         skip_i[i] = 0;
         dendro_lengths[i] = 1;
     }
-    
+
 
     //Generate submatrix, since some rows or columns will be null
     i_p = 0; j_p = 0;
@@ -1244,12 +1250,12 @@ Slist * UPGMA_joining_clustering(Quickfrag ** M, double ** submat, unsigned char
                     if(M[i][j].x->id == i) dendrogram[i_p]->s = M[i][j].x;
                     if(M[i][j].y->id == i) dendrogram[i_p]->s = M[i][j].y;
                     dendrogram[i_p]->next = NULL;
-                    
+
                 }
                 j_p++;
             }
         }
-        
+
         if(j_p > 0) i_p++;
     }
 
@@ -1277,16 +1283,16 @@ Slist * UPGMA_joining_clustering(Quickfrag ** M, double ** submat, unsigned char
                     i_min = i;
                     j_min = j;
                 }
-                
-                
+
+
             }
         }
 
         //Join minimums
         //printf("Min on %"PRIu64", %"PRIu64"\n", i_min, j_min);
 
-        
-        if( dendrogram[j_min]->next == NULL || dendrogram[i_min]->next == NULL){ 
+
+        if( dendrogram[j_min]->next == NULL || dendrogram[i_min]->next == NULL){
             //Add one makes a tuple
             Slist * aux = dendrogram[i_min];
             while(aux->next != NULL){
@@ -1299,7 +1305,7 @@ Slist * UPGMA_joining_clustering(Quickfrag ** M, double ** submat, unsigned char
             dendro_lengths[i_min]++;
         }else{
             Slist * null_seq = (Slist *) mp->request_bytes(sizeofSlist());
-            null_seq->s = NULL; 
+            null_seq->s = NULL;
             null_seq->next = dendrogram[j_min];
 
             Slist * aux = dendrogram[i_min];
@@ -1307,12 +1313,12 @@ Slist * UPGMA_joining_clustering(Quickfrag ** M, double ** submat, unsigned char
                 aux = aux->next;
             }
             aux->next = null_seq;
-            dendro_lengths[i_min] += dendro_lengths[j_min];                
-            
-        }
-        
+            dendro_lengths[i_min] += dendro_lengths[j_min];
 
-        
+        }
+
+
+
 
         //Remove existing rows and cols
         skip_i[j_min] = 1;
@@ -1331,12 +1337,12 @@ Slist * UPGMA_joining_clustering(Quickfrag ** M, double ** submat, unsigned char
             }
         }
         */
-        
+
         nodes_in_dendro++;
-        
+
 
         f_min = -1; //Restart minimum search
-        
+
     }
 
     //Print clusters
@@ -1346,8 +1352,8 @@ Slist * UPGMA_joining_clustering(Quickfrag ** M, double ** submat, unsigned char
     #endif
 
 
-    return dendrogram[i_min]; 
-    
+    return dendrogram[i_min];
+
 }
 
 
@@ -1370,12 +1376,12 @@ uint64_t generate_multiple_alignment(arguments_multiple_alignment * arg_mul_al){
     // For full NW
     char * aux_dummy_sequence; // The one that is not used in the backtrackings
     uint64_t * sequence_ids;
-    char ** recon_X; 
+    char ** recon_X;
     char ** recon_Y;
-    char ** recon_Z; 
+    char ** recon_Z;
     char ** seq_X;
     char ** seq_Y;
-    char ** seq_Z; 
+    char ** seq_Z;
     int64_t * cell_path_y;
     struct positioned_cell * mc_f;
     struct cell_f ** table_f;
@@ -1383,7 +1389,7 @@ uint64_t generate_multiple_alignment(arguments_multiple_alignment * arg_mul_al){
     long double window;
 
     */
-    // First generate the guidance tree to tell how to pair sequences 
+    // First generate the guidance tree to tell how to pair sequences
     //fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_reverse, Synteny_list * sbl, Quickfrag ** qfmat, unsigned char ** qfmat_state, int iGap, int eGap, struct cell ** mc, struct cell ** f0, struct cell ** f1, pthread_t * threads){
     fill_quickfrag_matrix_NW(arg_mul_al->seq_man, arg_mul_al->seq_for_reverse, arg_mul_al->sbl, arg_mul_al->qfmat, arg_mul_al->qfmat_state, arg_mul_al->iGap, arg_mul_al->eGap, arg_mul_al->mc, arg_mul_al->f0, arg_mul_al->f1, arg_mul_al->threads);
     Slist * tree = UPGMA_joining_clustering(arg_mul_al->qfmat, arg_mul_al->submat, arg_mul_al->qfmat_state, arg_mul_al->seq_man->get_number_of_sequences(), arg_mul_al->mp);
@@ -1394,7 +1400,7 @@ uint64_t generate_multiple_alignment(arguments_multiple_alignment * arg_mul_al){
     uint64_t final_len;
     memset(arg_mul_al->sequence_ids, 0, arg_mul_al->n_sequences * sizeof(uint64_t));
 
-    // Link IDs to synteny blocks 
+    // Link IDs to synteny blocks
     uint64_t starting_pos[arg_mul_al->n_sequences];
     uint64_t ending_pos[arg_mul_al->n_sequences];
     Synteny_block * sb_ptr = arg_mul_al->sbl->sb;
@@ -1404,15 +1410,15 @@ uint64_t generate_multiple_alignment(arguments_multiple_alignment * arg_mul_al){
         sb_ptr = sb_ptr->next;
     }
 
-    // Traverse tree and make pairwise alignments 
+    // Traverse tree and make pairwise alignments
     BasicAlignment ba;
     Slist * d = tree;
     while(d != NULL){
         if(d->s == NULL) printf(" ] "); else printf(" %"PRIu64" ", d->s->id);
         //getchar();
-        
+
         if(d->s != NULL){
-            
+
             if(current_sequences_in_X == 0){
                 memcpy(&arg_mul_al->seq_X[current_sequences_in_X][0], &d->s->seq[starting_pos[d->s->id]], ending_pos[d->s->id] - starting_pos[d->s->id]);
                 arg_mul_al->sequence_ids[current_sequences_in_X] = d->s->id;
@@ -1430,29 +1436,29 @@ uint64_t generate_multiple_alignment(arguments_multiple_alignment * arg_mul_al){
                 build_unanchored_alignment(arg_mul_al->cell_path_y, arg_mul_al->seq_X, arg_mul_al->seq_Y, current_sequences_in_X, current_sequences_in_Y);
                 uint64_t xlen = get_max_length_of_sequences(arg_mul_al->seq_X, current_sequences_in_X);
                 uint64_t ylen = get_max_length_of_sequences(arg_mul_al->seq_Y, current_sequences_in_Y);
-                
+
                 final_len = build_multiple_alignment(arg_mul_al->recon_X, arg_mul_al->recon_Y, arg_mul_al->seq_X, arg_mul_al->seq_Y, current_sequences_in_X, current_sequences_in_Y, arg_mul_al->table_f, arg_mul_al->mc_f, arg_mul_al->writing_buffer_alignment, xlen, ylen, arg_mul_al->cell_path_y, &arg_mul_al->window, arg_mul_al->iGap, arg_mul_al->eGap, &ba, arg_mul_al->aux_dummy_sequence);
 
-                // After aligning group X with group Y, move Y to X 
+                // After aligning group X with group Y, move Y to X
 
-                
+
                 memcpy(&arg_mul_al->seq_X[current_sequences_in_X][0], &arg_mul_al->seq_Y[0][0], final_len);
                 arg_mul_al->sequence_ids[current_sequences_in_X] = d->s->id;
                 current_sequences_in_X++;
                 //printf("CE IMPRESSIVE -> %s\n", arg_mul_al->seq_Y[0]);
 
-                
-                
+
+
 
                 current_sequences_in_Y = 0;
             }
-            
+
 
 
         }else{
 
         }
-        
+
         d = d->next;
     }
     // Finished
@@ -1488,14 +1494,14 @@ void find_event_location(Slist * dendrogram, Event e, void * data, Event_handlin
 
                 if(e == inversion){
                     //check for strands
-                        
+
                     strand_matrix * sm_B = (strand_matrix *) data;
                     printf("%u %u %u %u\n", sm_B->get_strands(next->s->id, d->s->id), sm_B->get_strands(d->s->id, prev->s->id), sm_B->get_strands(next->s->id, prev->s->id), sm_B->get_strands(prev->s->id, d->s->id));
                     sm_B->print_strand_matrix();
                     if(sm_B->get_strands(next->s->id, d->s->id) == sm_B->get_strands(d->s->id, prev->s->id)){
                         //A reversion happened in 'prev'
                         genomes_affected->genomes_affected[prev->s->id] = true;
-                    }                        
+                    }
                     if(sm_B->get_strands(next->s->id, prev->s->id) == sm_B->get_strands(prev->s->id, d->s->id)){
                         //A reversion happened in 'd'
                         genomes_affected->genomes_affected[d->s->id] = true;
@@ -1509,7 +1515,7 @@ void find_event_location(Slist * dendrogram, Event e, void * data, Event_handlin
                     if(sm_B->get_strands(next->s->id, d->s->id) == sm_B->get_strands(d->s->id, prev->s->id)){
                         //A reversion happened in 'prev'
                         genomes_affected->genomes_affected[prev->s->id] = true;
-                    }                        
+                    }
                     if(sm_B->get_strands(next->s->id, prev->s->id) == sm_B->get_strands(prev->s->id, d->s->id)){
                         //A reversion happened in 'd'
                         genomes_affected->genomes_affected[d->s->id] = true;
@@ -1519,9 +1525,9 @@ void find_event_location(Slist * dendrogram, Event e, void * data, Event_handlin
                 }
                 else if(e == indel){
 
-                    // TODO this should be remade 
+                    // TODO this should be remade
 
-                    
+
                     Indel_handling * indel_hd = (Indel_handling *) data;
 
 
@@ -1530,18 +1536,18 @@ void find_event_location(Slist * dendrogram, Event e, void * data, Event_handlin
                     //int64_t d_next_d = (int64_t) labs((int64_t) indel_hd->bp_lengths[next->s->id] - (int64_t) indel_hd->bp_lengths[d->s->id]);
                     #define RELATIVELY_SIMILAR 0.15
                     #define VERY_SIMILAR 0.9
-                    
 
-                    // 
+
+                    //
                     printf("printing values of importance:\n");
                     printf("%"PRId64" (d_next_prev) %Le (C2-1) %Le (C1-1) %Le (C2-2) %Le (C1-2)\n", d_next_prev, (long double) indel_hd->bp_lengths[d->s->id] / (long double) indel_hd->bp_lengths[next->s->id], (long double) indel_hd->bp_lengths[prev->s->id] / (long double) indel_hd->bp_lengths[next->s->id], (long double) indel_hd->bp_lengths[prev->s->id] / (long double) indel_hd->bp_lengths[next->s->id],  (long double) indel_hd->bp_lengths[d->s->id] / (long double) indel_hd->bp_lengths[next->s->id]);
 
                     if(d_next_prev >= 0){
-                        // possible deletion 
+                        // possible deletion
                         if((long double) indel_hd->bp_lengths[d->s->id] / (long double) indel_hd->bp_lengths[next->s->id] > VERY_SIMILAR){
                             if(! ((long double) indel_hd->bp_lengths[prev->s->id] / (long double) indel_hd->bp_lengths[next->s->id] > VERY_SIMILAR)){
                                 if(indel_hd->bp_lengths[prev->s->id] > indel_hd->bp_lengths[next->s->id]){
-                                    // There is insertion 
+                                    // There is insertion
                                     printf("Def an insertion in %"PRIu64"\n", prev->s->id);
                                     genomes_affected->type_of_event = insertion;
                                     genomes_affected->genomes_affected[prev->s->id] = true;
@@ -1559,7 +1565,7 @@ void find_event_location(Slist * dendrogram, Event e, void * data, Event_handlin
                         if((long double) indel_hd->bp_lengths[prev->s->id] / (long double) indel_hd->bp_lengths[next->s->id] > VERY_SIMILAR){
                             if(! ((long double) indel_hd->bp_lengths[d->s->id] / (long double) indel_hd->bp_lengths[next->s->id] > VERY_SIMILAR)){
                                 if(indel_hd->bp_lengths[prev->s->id] > indel_hd->bp_lengths[next->s->id]){
-                                    // There is insertion 
+                                    // There is insertion
                                     genomes_affected->type_of_event = insertion;
                                     printf("Def an insertion in %"PRIu64"\n", d->s->id);
                                     genomes_affected->genomes_affected[d->s->id] = true;
@@ -1579,17 +1585,17 @@ void find_event_location(Slist * dendrogram, Event e, void * data, Event_handlin
 
                 /*
                 switch(e){
-                    case inversion: 
+                    case inversion:
                     {
                         //check for strands
-                        
+
                         strand_matrix * sm_B = (strand_matrix *) data;
                         printf("%u %u %u %u\n", sm_B->get_strands(next->s->id, d->s->id), sm_B->get_strands(d->s->id, prev->s->id), sm_B->get_strands(next->s->id, prev->s->id), sm_B->get_strands(prev->s->id, d->s->id));
                         sm_B->print_strand_matrix();
                         if(sm_B->get_strands(next->s->id, d->s->id) == sm_B->get_strands(d->s->id, prev->s->id)){
                             //A reversion happened in 'prev'
                             genomes_affected[prev->s->id] = true;
-                        }                        
+                        }
                         if(sm_B->get_strands(next->s->id, prev->s->id) == sm_B->get_strands(prev->s->id, d->s->id)){
                             //A reversion happened in 'd'
                             genomes_affected[d->s->id] = true;
@@ -1611,27 +1617,27 @@ void find_event_location(Slist * dendrogram, Event e, void * data, Event_handlin
                         }
 
                     }
-                    
+
                     case duplication: {}
                     break;
                     case insertion: {}
                     break;
                     case deletion: {}
                     break;
-                    
+
                 }
                 */
             }else{
                 //Collapse
-                // TODO                
-                
+                // TODO
+
             }
         }
     }
 }
 
 int compare_distances_indel(const void * a, const void * b){
-    
+
     if( *(uint64_t *) a > *(uint64_t *) b) return 1;
     if(*(uint64_t *) a == *(uint64_t *) b) return 0;
     return -1;
@@ -1650,4 +1656,158 @@ long double median_from_vector(uint64_t * v, uint64_t l){
 void print_memory_usage(){
     //fprintf(stdout, "[INFO] Current RAM usage: %"PRIu64" (MB)\n", total_bytes_in_use/(1024*1024));
     fprintf(stdout, "[INFO] Current RAM usage: %"PRIu64" bytes, which are %"PRIu64" Megabytes. \n", total_bytes_in_use, total_bytes_in_use/(1024*1024));
+}
+
+void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len){
+    fprintf(f, "CSV file\n");
+    fprintf(f, "[Jul.15 -- < bitlab - Departamento de Arquitectura de Computadores >\n");
+    fprintf(f, "SeqX filename	: DATA1.dat\n");
+    fprintf(f, "SeqY filename	: DATA2.dat\n");
+    fprintf(f, "SeqX name	: S1\n");
+    fprintf(f, "SeqY name	: S2\n");
+    fprintf(f, "SeqX length	: %"PRIu64"\n", sx_len);
+    fprintf(f, "SeqY length	: %"PRIu64"\n", sy_len);
+    fprintf(f, "Min.fragment.length	: 0\n");
+    fprintf(f, "Min.Identity	: 0.0\n");
+    fprintf(f, "Total hits	: 0\n");
+    fprintf(f, "Total hits (used)	: 0\n");
+    fprintf(f, "Total fragments	: 0\n");
+    fprintf(f, "Total CSBs:	: 0\n");
+    fprintf(f, "Frag/CSB,xStart,yStart,xEnd,yEnd,strand,block,length,score,ident,similarity,identity,geneX,geneY\n");
+    fprintf(f, "========================================================\n");
+}
+
+void print_frags_grops_list(Frags_Groups_List * fgl) {
+  Frags_Groups_List * ptr_fgl;
+  Frags_Group * ptr_fg;
+  uint64_t i = 0;
+
+  for (ptr_fgl = fgl; ptr_fgl != NULL; ptr_fgl = ptr_fgl->next) {
+    fprintf(stdout, "FGL: %"PRIu64"\n", i++);
+    for (ptr_fg = ptr_fgl->fg; ptr_fg != NULL; ptr_fg = ptr_fg->next) {
+      fprintf(stdout, "\t"); printFragment(ptr_fg->f);
+    }
+  }
+
+}
+
+Frags_Groups_List * redo_synteny_system(Synteny_list * sbl){
+  Synteny_list * ptr_sbl;
+  Synteny_block * ptr_sb;
+  Block * ptr_b;
+  Frags_Groups_List * ptr_fgl = NULL;
+  Frags_Groups_List * ptr_nfgl;
+  Frags_Group * ptr_fg = NULL;
+  Frags_Group * ptr_nfg;
+  Frags_list * ptr_fl;
+
+  // For each synteny block
+  for (ptr_sbl = sbl; ptr_sbl != NULL; ptr_sbl = ptr_sbl->next){
+    // For each block in synteny block
+    for (ptr_sb = ptr_sbl->sb; ptr_sb != NULL; ptr_sb = ptr_sb->next){
+      ptr_b = ptr_sb->b;
+      if (ptr_b->genome->id == 0){
+        // Add all fragments to fg
+        for (ptr_fl = ptr_b->f_list; ptr_fl != NULL; ptr_fl = ptr_fl->next){
+          ptr_nfg = (Frags_Group*)malloc(sizeof(Frags_Group));
+          ptr_nfg->next = ptr_fg;
+          ptr_nfg->f = ptr_fl->f;
+          ptr_fg = ptr_nfg;
+        }
+      }
+    }
+    ptr_nfgl = (Frags_Groups_List*)malloc(sizeof(Frags_Groups_List));
+    ptr_nfgl->next = ptr_fgl;
+    ptr_nfgl->fg = ptr_fg;
+    ptr_fgl = ptr_nfgl;
+    ptr_fg = NULL;
+  }
+  return ptr_fgl;
+}
+
+void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl, uint64_t gid) {
+  Frags_Group * ptr_fg;
+  FragFile f;
+  uint64_t i, t;
+  int v;
+
+  i = 0;
+  for (ptr_fg = fg; ptr_fg != NULL; ptr_fg = ptr_fg->next) {
+    f = *ptr_fg->f;
+    hsl->insert(i++, abs(f.xStart - f.yStart));
+  }
+  t = hsl->get_first();
+  v = i == 1 ? 0 : 1;
+  i = 0;
+  for (ptr_fg = fg; ptr_fg != NULL; ptr_fg = ptr_fg->next){
+    f = *ptr_fg->f;
+    if (v != 0)
+      v = i == t ? 1 : 2;
+    fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
+    fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", gid, f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), v);
+    i++;
+  }
+  hsl->clear();
+}
+
+/*int contains_repetitions(Synteny_block * ptr_sb, uint64_t seq1_label, uint64_t seq2_label) {
+  uint8_t repetitions;
+  Block * ptr_b;
+
+  repetitions = 0b00;
+
+  while (ptr_sb != NULL) {
+    ptr_b = ptr_sb->b;
+    if (ptr_b->genome->id == seq1_label) {
+      if (repetitions & 0b01) return 1;
+      else repetitions |= 0b01;
+    } else if (ptr_b->genome->id == seq2_label) {
+      if (repetitions & 0b10) return 1;
+      else repetitions |= 0b10;
+    }
+    ptr_sb = ptr_sb->next;
+  }
+
+  return 0;
+}*/
+
+void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Frags_Groups_List * fgl) {
+  Sequence * seq1, * seq2;
+  Frags_Groups_List * ptr_fgl;
+  heuristic_sorted_list hsl;
+  uint64_t gid = 0;
+  //int repetitions;
+
+  seq1 = seq_mngr->get_sequence_by_label(seq1_label);
+  seq2 = seq_mngr->get_sequence_by_label(seq2_label);
+
+  write_header(out_file, seq1->len, seq2->len);
+  for (ptr_fgl = fgl; ptr_fgl != NULL; ptr_fgl = ptr_fgl->next){
+    save_frags_from_group(out_file, ptr_fgl->fg, &hsl, gid);
+    gid++;
+  }
+}
+
+void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Frags_Groups_List * fgl){
+  // TODO better descriptions
+  // Iterators
+  uint64_t i, j;
+  // Path to svc
+  char out_file_name[512];
+  // Number of sequences involved
+  uint64_t n_seq;
+  //
+  FILE * out_file;
+
+  n_seq = seq_manager->get_number_of_sequences();
+
+  // For each pair of sequences
+  for(i=0;i<n_seq;i++) for(j=i+1;j<n_seq;j++){
+    sprintf(out_file_name, "%s-%"PRIu64"-%"PRIu64".csv", out_file_base_path, i, j);
+    out_file = fopen64(out_file_name, "wt");
+    if (out_file == NULL) continue;
+    save_frag_pair(out_file, i, j, seq_manager, fgl);
+    fclose(out_file);
+  }
+
 }

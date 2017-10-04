@@ -63,6 +63,7 @@ void readFragment(struct FragFile *frag, FILE *f) {
         if (fread(&frag->seqY, sizeof(uint64_t), 1, f) != 1) {
             terror("Error reading the HSP seqY");
         }
+        frag->seqY = 1;
         if (fread(&frag->block, sizeof(int64_t), 1, f) != 1) {
             terror("Error reading the HSP block");
         }
@@ -117,6 +118,7 @@ void readFragment(struct FragFile *frag, FILE *f) {
             terror("Error reading the HSP seqY");
         }
         endianessConversion(tmpArray, (char *) (&frag->seqY), sizeof(uint64_t));
+        frag->seqY = 1;
         if (fread(tmpArray, sizeof(int64_t), 1, f) != 1) {
             terror("Error reading the HSP block");
         }
@@ -325,17 +327,17 @@ int isBlockEqualToWithOrder(Block * a, Block * b){
 int idNotInList(Frags_list * fl, struct FragFile * f){
     Frags_list * ptr = fl;
     while(ptr != NULL){
-        
+
         if(ptr->f->seqX == f->seqX && ptr->f->seqY == f->seqY) return 0;
-        
-        
+
+
         ptr = ptr->next;
     }
     return 1;
 }
 
 void printFragment(struct FragFile * f){
-    
+
     fprintf(stdout, "FRAG::(%"PRIu64", %"PRIu64") to (%"PRIu64", %"PRIu64"): [%"PRIu64"]-[%"PRIu64"] %c LEN[%"PRIu64"]\n", f->xStart, f->yStart, f->xEnd, f->yEnd, f->seqX, f->seqY, f->strand, f->length);
 }
 
@@ -409,7 +411,7 @@ void printQuickFragMatrix(Quickfrag ** qfmat, unsigned char ** qfmat_state, uint
             }else{
                 printf("[ ** ] ");
             }
-            
+
         }
         printf("\n");
     }
@@ -436,9 +438,9 @@ void printUnstatedDoubleMatrix(double ** qfmat, uint64_t n_seqs, unsigned char *
                 if(i==j) printf("[ ** ]"); else printf("[%.1f] ", (float)qfmat[i][j]);
             }
 
-            
-            
-            
+
+
+
         }
         printf("\n");
     }
@@ -483,18 +485,18 @@ void printDebugBlockOrderByGenome(Synteny_list * sl, uint64_t genome_id){
                     }else{
                         b_ptr = b_ptr->prev;
                     }
-                    
-                    
-                    
+
+
+
                 }
-                
-                
+
+
                 return;
             }
             sb_ptr = sb_ptr->next;
         }
     }
-    
+
 }
 
 

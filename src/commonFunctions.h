@@ -134,16 +134,16 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
 */
 void compute_NW_on_pthreads(void * a);
 /*
-	Same as read_words_and_align but for NW 
+	Same as read_words_and_align but for NW
 */
 void * fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_reverse, Synteny_list * sbl, Quickfrag ** qfmat, unsigned char ** qfmat_state, int iGap, int eGap, struct cell ** mc, struct cell ** f0, struct cell ** f1, pthread_t * threads);
 /*
-	Complements a nucleotide 
+	Complements a nucleotide
 */
 inline char complement(char c);
 
 /*
-	Swaps two DNA segments 
+	Swaps two DNA segments
 */
 void inplace_dna_switch(char *a, char *b, uint64_t l1, uint64_t l2, uint64_t t);
 /*
@@ -182,8 +182,38 @@ int compare_distances_indel(const void * a, const void * b);
 long double median_from_vector(uint64_t * v, uint64_t l);
 
 /*
-	Prints memory requested from heap 
+	Prints memory requested from heap
 */
 void print_memory_usage();
+
+/*
+  TODO dest
+*/
+Frags_Groups_List * redo_synteny_system(Synteny_list * sbl);
+
+/*
+  TODO desc
+*/
+void print_frags_grops_list(Frags_Groups_List * fgl);
+
+/*
+  Prints the standard csv header
+*/
+void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len);
+
+/*
+ TODO desc
+*/
+void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl, uint64_t gid);
+
+/*
+ TODO desc
+*/
+void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Frags_Groups_List * fgl);
+
+/*
+ TODO desc
+*/
+void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Frags_Groups_List * fgl);
 
 #endif /* COMMON_FUNCTIONS_H */

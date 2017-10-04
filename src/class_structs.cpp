@@ -10,6 +10,80 @@
 
 extern uint64_t total_bytes_in_use;
 
+heuristic_sorted_list::heuristic_sorted_list()
+{
+}
+
+void heuristic_sorted_list::insert_new(uint64_t id, uint64_t value, hs_bucket * prev)
+{
+	hs_bucket * nb;
+
+	nb = (hs_bucket *)malloc(sizeof(hs_bucket));
+	nb->id = id;
+	nb->value = value;
+	if (prev == NULL) {
+		nb->next = this->head;
+		head = nb;
+	} else {
+		nb->next = prev->next;
+		prev->next = nb;
+	}
+}
+
+void heuristic_sorted_list::print() {
+	hs_bucket * hsb = this->head;
+
+	while (hsb != NULL) {
+		printf("ID: %"PRIu64": VAL: %"PRIu64" -> ", hsb->id, hsb->value);
+		hsb = hsb->next;
+	}
+	printf("\n");
+}
+
+void heuristic_sorted_list::insert(uint64_t id, uint64_t value)
+{
+	hs_bucket * phsb;
+	hs_bucket * hsb;
+
+  phsb = NULL;
+	hsb = this->head;
+	while (hsb != NULL){
+		if (hsb->value >= value){
+			insert_new(id, value, phsb);
+			return;
+		}else{
+			phsb = hsb;
+			hsb = hsb->next;
+		}
+	}
+	insert_new(id, value, hsb);
+}
+
+bool heuristic_sorted_list::contains(uint64_t id) {
+	hs_bucket * hsb;
+
+	hsb = this->head;
+	while (hsb != NULL) {
+		if (hsb->id == id) return true;
+		else hsb = hsb->next;
+	}
+	return false;
+}
+
+void heuristic_sorted_list::clear() {
+	hs_bucket * aux;
+	while (this->head != NULL) {
+		aux = this->head->next;
+		free(aux);
+		this->head = aux;
+	}
+}
+
+heuristic_sorted_list::~heuristic_sorted_list()
+{
+	clear();
+}
+
 memory_pool::memory_pool(uint64_t pool_size)
 {
 	this->current_pool = 0;
@@ -24,7 +98,7 @@ memory_pool::memory_pool(uint64_t pool_size)
 	//if (this->mem_pool == NULL) terror("Could not allocate memory pools");
 	//this->mem_pool[0] = (char *) std::calloc(pool_size, sizeof(char));
 	char * a_pool = (char *) std::calloc(pool_size, sizeof(char));
-	
+
 	this->mem_pool->push_back(a_pool);
 	//if (this->mem_pool[0] == NULL) terror("Could not allocate initial memory pool");
 	this->max_pools = 1;
@@ -50,12 +124,12 @@ void * memory_pool::request_bytes(uint64_t n_bytes)
 			this->base->push_back(0);
 			this->max_pools++;
 		}
-		
+
 	}
-	
+
 	ptr = &this->mem_pool->at(this->current_pool)[0] + this->base->at(this->current_pool);
 	this->base->at(this->current_pool) = this->base->at(this->current_pool) + n_bytes;
-	
+
 	return ptr;
 }
 
@@ -72,7 +146,7 @@ void memory_pool::reset_n_bytes(uint64_t bytes){
 }
 
 void memory_pool::full_reset(){
-	
+
 	for (uint64_t i = 0; i <= this->current_pool; i++) {
 		memset(this->mem_pool->at(i), 0, this->pool_size);
 		/*
@@ -108,7 +182,7 @@ hash_table::hash_table(memory_pool * main_mem_pool, uint64_t init_size, sequence
 	this->mp = main_mem_pool;
 	this->ht_size = init_size;
 	this->ht = (Bucket **) this->mp->request_bytes(init_size*sizeof(Bucket *));
-	
+
 	this->sequences = sequences;
 	this->n_buckets = init_size;
 
@@ -128,7 +202,7 @@ hash_table::hash_table(memory_pool * main_mem_pool, uint64_t init_size, sequence
 	}else{
 		this->key_factor = 1.0;
 	}
-	
+
 
 }
 
@@ -137,7 +211,7 @@ uint64_t hash_table::compute_hash(uint64_t key){
 }
 
 void hash_table::insert_block(struct FragFile * f){
-	
+
 	this->insert_x_side(f);
 	this->insert_y_side(f);
 
@@ -145,7 +219,7 @@ void hash_table::insert_block(struct FragFile * f){
 
 void hash_table::insert_x_side(struct FragFile * f){
 	uint64_t hash_x = compute_hash(f->xStart);
-	
+
 
 	//Condition to insert in the frags list
 	int insert_on_list = 0;
@@ -153,7 +227,7 @@ void hash_table::insert_x_side(struct FragFile * f){
 
 	//Get memory for buckets
 	Bucket * bkt_x = (Bucket *) this->mp->request_bytes(this->computed_sizeof_block);
-	
+
 
 	//Fill data of block
 	bkt_x->next = NULL;
@@ -166,23 +240,23 @@ void hash_table::insert_x_side(struct FragFile * f){
 	Bucket * ptr = ht[hash_x];
 	Bucket * theoretical_position = NULL;
 
-	
+
 	while(ptr != NULL){
 		if(isBlockEqualTo(&bkt_x->b, &ptr->b)){
-			
+
 			this->mp->reset_n_bytes(this->computed_sizeof_block); //First reset the bytes taken for the block
-			
+
 			if(idNotInList(ptr->b.f_list, f)){
 				//The block exists but not linked to this fragment, so add it to the list
 
-				insert_on_list = 1;	
+				insert_on_list = 1;
 			}else{
 				//If the block already exists for this genome and for this fragment then it is a repetition
 				//(Only varies its y-coordinates)
 				//What do here?
 				//Insert in the fragment list; the block will get inserted on the other coordinate anyway
 				insert_on_list = 1;
-				
+
 			}
 			//Exit since the block exists
 			exit = 1;
@@ -196,20 +270,20 @@ void hash_table::insert_x_side(struct FragFile * f){
 		}
 		//}
 		if(exit == 1) break;
-		ptr = ptr->next;	
+		ptr = ptr->next;
 	}
 
 	//Actual insertion: If null pointer then the block was not contained in the set
 	//If not null pointer, it was already contained and thus we have to reset the bytes requested
 	if(ptr == NULL){
-		
-		if(ht[hash_x] == NULL) this->n_entries++; 
+
+		if(ht[hash_x] == NULL) this->n_entries++;
 
 		Frags_list * frag_pointer = (Frags_list *) this->mp->request_bytes(this->computed_sizeof_frags_list);
-		
-		
+
+
 		//Insert between theoretical position and its next
-		
+
 		if(theoretical_position == NULL){
 			bkt_x->next = ht[hash_x];  //Insert at the head
 			ht[hash_x] = bkt_x;
@@ -217,25 +291,25 @@ void hash_table::insert_x_side(struct FragFile * f){
 			bkt_x->next = theoretical_position->next;
 			theoretical_position->next = bkt_x;
 		}
-		
+
 
 
 		//Insert frag into list
 		bkt_x->b.f_list = frag_pointer;
-		bkt_x->b.f_list->next = NULL; 
+		bkt_x->b.f_list->next = NULL;
 		bkt_x->b.f_list->f = f;
-		
+
 		bkt_x->b.present_in_synteny = NULL;
 
-		
-		
+
+
 
 		this->n_buckets++;
 
 	}
 
 	if(ptr != NULL && insert_on_list == 1){
-		
+
 		Frags_list * frag_pointer = (Frags_list *) this->mp->request_bytes(this->computed_sizeof_frags_list);
 		total_bytes_in_use += this->computed_sizeof_frags_list;
 		frag_pointer->next = ptr->b.f_list;
@@ -244,20 +318,20 @@ void hash_table::insert_x_side(struct FragFile * f){
 
 
 	}
-	
+
 
 }
 
 void hash_table::insert_y_side(struct FragFile * f){
 	uint64_t hash_y = compute_hash(f->yStart);
-		
+
 	//Condition to insert in the frags list
 	int insert_on_list = 0;
 	int exit = 0;
 
 	//Get memory for buckets
 	Bucket * bkt_y = (Bucket *) this->mp->request_bytes(this->computed_sizeof_block);
-	
+
 
 	//Fill data of block
 	bkt_y->next = NULL;
@@ -272,20 +346,20 @@ void hash_table::insert_y_side(struct FragFile * f){
 
 
 	while(ptr != NULL){
-		
+
 		if(isBlockEqualTo(&bkt_y->b, &ptr->b)){
 
 			this->mp->reset_n_bytes(this->computed_sizeof_block); //First reset the bytes taken for the block
-			
+
 			if(idNotInList(ptr->b.f_list, f)){
 				//The block exists but not linked to this fragment, so add it to the list
-				insert_on_list = 1;	
+				insert_on_list = 1;
 			}else{
 				//If the block already exists for this genome and for this fragment then it is a repetition
 				//(Only varies its y-coordinates)
 				//What do here?
 				insert_on_list = 1;
-				
+
 			}
 			//Exit since the block exists
 			exit = 1;
@@ -300,18 +374,18 @@ void hash_table::insert_y_side(struct FragFile * f){
 		//}
 		if(exit == 1) break;
 
-		ptr = ptr->next;	
+		ptr = ptr->next;
 	}
 
 	//Actual insertion: If null pointer then the block was not contained in the set
 	//If not null pointer, it was already contained and thus we have to reset the bytes requested
 	if(ptr == NULL){
-		
-		if(ht[hash_y] == NULL) this->n_entries++; 
+
+		if(ht[hash_y] == NULL) this->n_entries++;
 
 		Frags_list * frag_pointer = (Frags_list *) this->mp->request_bytes(this->computed_sizeof_frags_list);
-		
-		
+
+
 		//Insert between theoretical position and its next
 		if(theoretical_position == NULL){
 			bkt_y->next = ht[hash_y];  //Insert at the head
@@ -321,11 +395,11 @@ void hash_table::insert_y_side(struct FragFile * f){
 			theoretical_position->next = bkt_y;
 		}
 
-		
+
 
 		//Insert frag into list
 		bkt_y->b.f_list = frag_pointer;
-		bkt_y->b.f_list->next = NULL; 
+		bkt_y->b.f_list->next = NULL;
 		bkt_y->b.f_list->f = f;
 
 		bkt_y->b.present_in_synteny = NULL;
@@ -335,15 +409,15 @@ void hash_table::insert_y_side(struct FragFile * f){
 	}
 
 	if(ptr != NULL && insert_on_list == 1){
-		
+
 		Frags_list * frag_pointer = (Frags_list *) this->mp->request_bytes(this->computed_sizeof_frags_list);
-		
+
 		frag_pointer->next = ptr->b.f_list;
 		frag_pointer->f = f;
-		ptr->b.f_list = frag_pointer;	
+		ptr->b.f_list = frag_pointer;
 
 	}
-	
+
 }
 
 void hash_table::remove_block(Block * b){
@@ -352,8 +426,8 @@ void hash_table::remove_block(Block * b){
 	uint64_t hash = compute_hash(b->start);
 	prev = NULL;
 	ptr = this->get_key_at(hash);
-	
-	
+
+
 	while(ptr != NULL){
 		if(ptr->b.start == b->start && ptr->b.end == b->end
 		&& ptr->b.genome->id == b->genome->id){
@@ -365,10 +439,10 @@ void hash_table::remove_block(Block * b){
 			}else{
 				this->ht[hash]->next = ptr->next;
 			}
-			
+
 			return;
 		}
-		
+
 		prev = ptr;
 		ptr = ptr->next;
 	}
@@ -384,8 +458,8 @@ void hash_table::print_hash_table(int print){
 		bck_counter = 0;
 		ptr = this->ht[i];
 		//had_reversed = 0;
-		while(ptr != NULL){ 
-			
+		while(ptr != NULL){
+
 			printBlock(&ptr->b);
 			if(print == PRINT_BLOCKS_AND_FRAGS){
 				//had_reversed = 0;
@@ -399,7 +473,7 @@ void hash_table::print_hash_table(int print){
 				}
 				getchar();
 			}
-			bck_counter++; ptr = ptr->next; 
+			bck_counter++; ptr = ptr->next;
 		}
 		/*
 		if(print >= 1){
@@ -421,7 +495,7 @@ Bucket * hash_table::get_value_at(uint64_t pos){
 }
 
 Block * hash_table::get_block_from_frag(struct FragFile * f, int x_or_y){
-	
+
 	Bucket * ptr;
 
 	if(x_or_y == 0){
@@ -429,12 +503,12 @@ Block * hash_table::get_block_from_frag(struct FragFile * f, int x_or_y){
 	}else{
 		ptr = this->get_key_at(compute_hash(f->yStart));
 	}
-	
+
 	while(ptr != NULL){
 		if(x_or_y == 0 && ptr->b.start == f->xStart && ptr->b.end == f->xEnd
-		&& ptr->b.genome->id == f->seqX) { return &ptr->b;} 
+		&& ptr->b.genome->id == f->seqX) { return &ptr->b;}
 		if(x_or_y == 1 && ptr->b.start == f->yStart && ptr->b.end == f->yEnd
-		&& ptr->b.genome->id == f->seqY) { return &ptr->b;} 
+		&& ptr->b.genome->id == f->seqY) { return &ptr->b;}
 
 		ptr = ptr->next;
 	}
@@ -491,15 +565,15 @@ void hash_table::write_blocks_and_breakpoints_to_file(FILE * out_blocks, FILE * 
 
 	for(i=0;i<this->ht_size;i++){
 		ptr = this->ht[i];
-		while(ptr != NULL){ 
-			
+		while(ptr != NULL){
+
 			bps_to[ptr->b.genome->id] = ptr->b.start;
-			
+
 			//If there actually is a breakpoint
 			if(bps_to[ptr->b.genome->id] > bps_from[ptr->b.genome->id]+1){
-				
+
 				switch(print_only_noncoding){
-					
+
 					case 1:
 					{
 						//Only if there is no matching gene
@@ -510,41 +584,41 @@ void hash_table::write_blocks_and_breakpoints_to_file(FILE * out_blocks, FILE * 
 							getchar();
 						}
 						*/
-						
-						
-						
+
+
+
 
 						if(NULL == binary_search_annotations(bps_from[ptr->b.genome->id]+1, bps_to[ptr->b.genome->id]-1, this->sequences->get_annotation_list(ptr->b.genome->id), this->sequences->get_annotations_number_in_list(ptr->b.genome->id) - 1)){
-							fprintf(out_breakpoints, "%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\n", 
+							fprintf(out_breakpoints, "%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\n",
 							block_counts, ptr->b.genome->id, bps_from[ptr->b.genome->id]+1, bps_to[ptr->b.genome->id]-1, bps_to[ptr->b.genome->id] - bps_from[ptr->b.genome->id] + 1);
 						}
 					}
 					break;
-					default: fprintf(out_breakpoints, "%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\n", 
+					default: fprintf(out_breakpoints, "%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\n",
 							block_counts, ptr->b.genome->id, bps_from[ptr->b.genome->id]+1, bps_to[ptr->b.genome->id]-1, bps_to[ptr->b.genome->id] - bps_from[ptr->b.genome->id] + 1);
-				}				
+				}
 			}
-			
+
 			switch(print_only_noncoding){
 				case 1:
 				{
 					if(NULL == binary_search_annotations(ptr->b.start, ptr->b.end, this->sequences->get_annotation_list(ptr->b.genome->id), this->sequences->get_annotations_number_in_list(ptr->b.genome->id)-1)){
-						fprintf(out_blocks, "%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\n", 
+						fprintf(out_blocks, "%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\n",
 						block_counts, ptr->b.genome->id, ptr->b.order, ptr->b.start, ptr->b.end, ptr->b.end-ptr->b.start + 1);
 					}
 				}
 				break;
-				default: fprintf(out_blocks, "%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\n", 
+				default: fprintf(out_blocks, "%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\t%"PRIu64"\n",
 			block_counts, ptr->b.genome->id, ptr->b.order, ptr->b.start, ptr->b.end, ptr->b.end-ptr->b.start + 1);
 
 			}
-			
-			
-			
+
+
+
 			bps_from[ptr->b.genome->id] = ptr->b.end;
 
 			block_counts++;
-			ptr = ptr->next; 
+			ptr = ptr->next;
 		}
 	}
 	std::free(bps_from);
@@ -572,7 +646,7 @@ strand_matrix::strand_matrix(uint64_t sequences){
 void strand_matrix::add_fragment_strands(Synteny_list * sbl){
 	Synteny_block * sb_ptr;
 	Frags_list * fl;
-	
+
 	if(sbl != NULL){
 		sb_ptr = sbl->sb;
 		//printf("A block...\n");
@@ -595,10 +669,10 @@ void strand_matrix::add_fragment_strands(Synteny_list * sbl){
 					this->acu_frags_reverse++;
 				}
 
-				
+
 				fl = fl->next;
 			}
-			
+
 
 			sb_ptr = sb_ptr->next;
 		}
@@ -643,7 +717,7 @@ void strand_matrix::set_strands(uint64_t l1, uint64_t l2, unsigned char v){
 
 void strand_matrix::reset(){
 
-	
+
 	this->acu_frags_forward = 0;
 	this->acu_frags_reverse = 0;
 
@@ -653,7 +727,7 @@ void strand_matrix::reset(){
 			this->sm_orders[i] = 0;
 		}
 	}
-	
+
 }
 
 int strand_matrix::do_forwards_require_less_changes(uint64_t genome){
@@ -703,7 +777,7 @@ int strand_matrix::is_block_reversed(uint64_t block_number){
 	}
 
 	//Now we have to check in case that some are forward because the others are reversed
-	
+
 
 	return (n_rev > n_for) ? 1 : -1;
 }
@@ -731,7 +805,7 @@ uint64_t sequence_manager::load_sequences_descriptors(FILE * lengths_file){
     this->n_sequences = ftello(lengths_file)/sizeof(uint64_t);
     fseeko(lengths_file, 0L, SEEK_SET);
 
-    
+
     //Allocate heap for sequences struct to hold lengths and ids
 	this->sequences = (Sequence *) std::malloc(n_sequences*sizeofSequence());
 	total_bytes_in_use += n_sequences*sizeofSequence();
@@ -779,9 +853,9 @@ Sequence * sequence_manager::get_sequence_by_label(uint64_t label){
 }
 
 void sequence_manager::read_dna_sequences(char * paths_to_files){
-    
+
     uint64_t i;
-    
+
     FILE * lf = fopen64(paths_to_files, "rt");
     if(lf == NULL) terror("Could not open list of genomic files");
 
@@ -791,7 +865,7 @@ void sequence_manager::read_dna_sequences(char * paths_to_files){
         all_sequences_names[i] = (char *) std::malloc(READLINE*sizeof(char));
         if(all_sequences_names[i] == NULL) terror("Could not allocate paths to files");
     }
-	
+
 
 
     i = 0;
@@ -806,9 +880,9 @@ void sequence_manager::read_dna_sequences(char * paths_to_files){
     if(i != this->n_sequences) { printf("%"PRIu64"\n", i);terror("Something went wrong. Incorrect number of files"); }
 
     fclose(lf);
-    
-    
-    
+
+
+
     //Char to hold all sequences
     char ** all_sequences = (char **) std::calloc(this->n_sequences, sizeof(char *));
     if(all_sequences == NULL) terror("Could not allocate sequences pointer");
@@ -826,9 +900,9 @@ void sequence_manager::read_dna_sequences(char * paths_to_files){
     //To force reading from the buffer
     idx = READBUF + 1;
     char c;
-    
+
     uint64_t _m_len = 0;
-    FILE * current; 
+    FILE * current;
 
     //Read sequences and load into array
     for(i=0;i<this->n_sequences;i++){
@@ -851,7 +925,7 @@ void sequence_manager::read_dna_sequences(char * paths_to_files){
                     c = buffered_fgetc(temp_seq_buffer, &idx, &r, current);
                     c = toupper(c);
                     if(c >= 'A' && c <= 'Z'){
-                        
+
 						if(c != 'A' && c != 'C' && c != 'G' && c != 'T'){
 							all_sequences[i][curr_pos++] = 'N';
 						}else{
@@ -870,7 +944,7 @@ void sequence_manager::read_dna_sequences(char * paths_to_files){
             }else{
                 c = buffered_fgetc(temp_seq_buffer, &idx, &r, current);
             }
-            
+
         }
         //Realloc final size
         //all_sequences[i] = (char *) std::realloc(all_sequences[i], curr_pos);
@@ -888,7 +962,7 @@ void sequence_manager::read_dna_sequences(char * paths_to_files){
 
     for(i=0;i<this->n_sequences;i++){
 		//Realloc to largest size to enable future insertions
-		
+
 		//all_sequences[i] = (char *) std::realloc(all_sequences[i], _m_len*sizeof(char));
 		//Realloc to a lot for testing
 		all_sequences[i] = (char *) std::realloc(all_sequences[i], SEQUENCE_INDELS_LEN*sizeof(char));
@@ -897,7 +971,7 @@ void sequence_manager::read_dna_sequences(char * paths_to_files){
 		this->sequences[i].seq[_m_len] = '\0';
 
 		//this->print_sequence_region(stdout, i, 0, _m_len-1);
-		
+
         std::free(all_sequences_names[i]);
     }
     std::free(all_sequences_names);
@@ -964,17 +1038,17 @@ void sequence_manager::read_annotations(){
 						this->annotation_lists[current_label] = (Annotation *) std::realloc(this->annotation_lists[current_label], n_reallocs[current_label]*INIT_ANNOTS);
 						if(this->annotation_lists == NULL) terror("Could not realloc list of annotations");
 					}
-					memcpy(&this->annotation_lists[current_label][this->n_annotations[current_label]], &an1, sizeofAnnotation()); 
+					memcpy(&this->annotation_lists[current_label][this->n_annotations[current_label]], &an1, sizeofAnnotation());
 					this->n_annotations[current_label]++;
-					
-					memcpy(&this->annotation_lists[current_label][this->n_annotations[current_label]], &an2, sizeofAnnotation()); 
+
+					memcpy(&this->annotation_lists[current_label][this->n_annotations[current_label]], &an2, sizeofAnnotation());
 					this->n_annotations[current_label]++;
-					
+
 
 				}else if(strstr(line, "complement") != NULL){
 					//Its complemented
 					//     gene            complement(16694..16957)
-				
+
 					sscanf(line, "%[^(](%"PRIu64"%[.>]%"PRIu64")", nullString, &an1.start, nullString, &an1.end);
 					an1.strand = 'r';
 					an1.product = NULL;
@@ -984,7 +1058,7 @@ void sequence_manager::read_annotations(){
 						this->annotation_lists[current_label] = (Annotation *) std::realloc(this->annotation_lists[current_label], n_reallocs[current_label]*INIT_ANNOTS);
 						if(this->annotation_lists == NULL) terror("Could not realloc list of annotations");
 					}
-					memcpy(&this->annotation_lists[current_label][this->n_annotations[current_label]], &an1, sizeofAnnotation()); 
+					memcpy(&this->annotation_lists[current_label][this->n_annotations[current_label]], &an1, sizeofAnnotation());
 					this->n_annotations[current_label]++;
 
 
@@ -993,14 +1067,14 @@ void sequence_manager::read_annotations(){
 					//     gene            1..1392
 					sscanf(line, "%s%"PRIu64"%[.>]%"PRIu64"", nullString, &an1.start, nullString, &an1.end);
 					an1.strand = 'f';
-					
+
 					//See if it still has space to add the annotation
 					if(this->n_annotations[current_label] == n_reallocs[current_label]*INIT_ANNOTS){
 						n_reallocs[current_label]++;
 						this->annotation_lists[current_label] = (Annotation *) std::realloc(this->annotation_lists[current_label], n_reallocs[current_label]*INIT_ANNOTS);
 						if(this->annotation_lists == NULL) terror("Could not realloc list of annotations");
 					}
-					memcpy(&this->annotation_lists[current_label][this->n_annotations[current_label]], &an1, sizeofAnnotation()); 
+					memcpy(&this->annotation_lists[current_label][this->n_annotations[current_label]], &an1, sizeofAnnotation());
 					this->n_annotations[current_label]++;
 
 				}
@@ -1052,12 +1126,12 @@ sequence_manager::~sequence_manager(){
 dictionary_hash::dictionary_hash(uint64_t init_size, uint64_t highest_key, uint32_t kmer_size){
 	this->ht_size = init_size;
 	this->kmer_size = kmer_size;
-	
+
 	this->mp = new memory_pool(init_size * sizeofWordbucket());
-	
+
 	this->list_allocs = 1;
 	this->list = (Wordbucket **) std::malloc(INIT_CANDIDATES_ALIGN * sizeof(Wordbucket *));
-	
+
 	total_bytes_in_use += INIT_CANDIDATES_ALIGN*sizeof(Wordbucket *);
 	if(this->list == NULL) terror("Could not allocate list for candidate hits");
 
@@ -1100,12 +1174,12 @@ Wordbucket ** dictionary_hash::put_and_hit(char * kmer, char strand, uint64_t po
 		//printf("U see? its null\n");
 		return NULL;
 	}
-	
-	//Else there is already some word 
+
+	//Else there is already some word
 	while(ptr != NULL){
 		if(hash == ptr->w.hash && ptr->w.b->genome->id != b->genome->id){
 			//Same hash and different sequences -> its a hit
-			
+
 			if(inserted == false){
 				Wordbucket * new_word = (Wordbucket *) this->mp->request_bytes(this->computed_sizeofwordbucket);
 				new_word->w.hash = hash;
@@ -1116,7 +1190,7 @@ Wordbucket ** dictionary_hash::put_and_hit(char * kmer, char strand, uint64_t po
 				this->words[h_pos] = new_word;
 				inserted = true;
 			}
-			
+
 			//Put in list of candidates
 
 			//First check that there is room
@@ -1125,7 +1199,7 @@ Wordbucket ** dictionary_hash::put_and_hit(char * kmer, char strand, uint64_t po
 				this->list = (Wordbucket **) std::realloc(this->list, this->list_allocs*INIT_CANDIDATES_ALIGN*sizeof(Wordbucket *));
 				if(this->list == NULL) terror("Could not realloc candidate hits for alignment");
 			}
-			//Insert 
+			//Insert
 			this->list[this->n_list_pointers] = ptr;
 			this->n_list_pointers++;
 
@@ -1133,7 +1207,7 @@ Wordbucket ** dictionary_hash::put_and_hit(char * kmer, char strand, uint64_t po
 		}
 		ptr = ptr->next;
 	}
-	
+
 
 	if(this->n_list_pointers == 0){
 		//There are words but no hit, insert
@@ -1153,7 +1227,7 @@ Wordbucket ** dictionary_hash::put_and_hit(char * kmer, char strand, uint64_t po
 }
 
 void dictionary_hash::clear(){
-	
+
 	this->mp->full_reset();
 	this->words = (Wordbucket **) this->mp->request_bytes(this->ht_size * sizeof(Wordbucket *));
 	//for(uint64_t i=0;i<this->ht_size;i++) this->words[i] = NULL;
@@ -1177,7 +1251,7 @@ events_queue::events_queue(uint64_t n_sequences){
 }
 
 void events_queue::insert_event(rearrangement r){
-	
+
 	this->rea_queue->push_back(r);
 	#ifdef VERBOSE
 	printf("Inserted----->"); printRearrangement(&r);
@@ -1185,7 +1259,7 @@ void events_queue::insert_event(rearrangement r){
 }
 
 rearrangement * events_queue::get_aggregated_event(Block * b, uint64_t s_id){
-	
+
 	memset(this->aggregated_r, 0, sizeofRearrangement());
 	this->begin_iterator();
 	bool _changes = false, _pop;
@@ -1194,19 +1268,19 @@ rearrangement * events_queue::get_aggregated_event(Block * b, uint64_t s_id){
 	while(this->rea_itera != this->rea_queue->end()){
 		_pop = false;
 		if(this->rea_itera->affects_who == b->genome->id){
-			//The rearragement affects the block 
+			//The rearragement affects the block
 			if(s_id <= this->rea_itera->ends_at) { this->rea_itera->type--; printf("disable life\n"); }
 			if(this->rea_itera->type == 0 && s_id > this->rea_itera->ends_at){
 				#ifdef VERBOSE
 				printf("popped out %"PRIu64": ", s_id); printRearrangement(&(*this->rea_itera));
 				#endif
-				
+
 				//A round was completed, this event does not apply anymore
-				this->rea_itera = this->rea_queue->erase(this->rea_itera);	
+				this->rea_itera = this->rea_queue->erase(this->rea_itera);
 				_pop = true;
 			//}else if(this->rea_itera->b1_id <= b->id && b->id < this->rea_itera->b2_id){//If its in range
 			}else if(this->rea_itera->b1_id <= b->end && b->start <= this->rea_itera->b2_id){//If its in range
-			
+
 				#ifdef VERBOSE
 				printf("\tIncluded R:"); printRearrangement(&(*this->rea_itera));
 				#endif
@@ -1216,11 +1290,11 @@ rearrangement * events_queue::get_aggregated_event(Block * b, uint64_t s_id){
 				_changes = true;
 				//Rest is not needed
 			}
-			
+
 		}
 		if(!_pop) this->rea_itera++;
 	}
-	
+
 	if(!_changes) return NULL;
 	return this->aggregated_r;
 }
@@ -1270,7 +1344,7 @@ void ee_log::force_write(){
 	this->write_buffer[0] = '\0';
 	fclose(this->logfile);
 	this->logfile = fopen(this->path, "a+");
-	if(this->logfile == NULL) terror("Output log file is null");	
+	if(this->logfile == NULL) terror("Output log file is null");
 }
 
 void ee_log::register_event(Event e, void * event_data){
@@ -1366,16 +1440,16 @@ void markdown_event_hash::put(triplet * k){
 	uint64_t hash = this->compute_hash(k);
 	triplet * ptr = this->array[hash];
 	if(ptr == NULL){
-		// Put new 
+		// Put new
 		this->array[hash] = (triplet *) mp->request_bytes(sizeofTriplet());
-		
+
 		this->array[hash]->A = k->A;
 		this->array[hash]->B = k->B;
 		this->array[hash]->C = k->C;
 		this->array[hash]->etype = k->etype;
 		this->array[hash]->next = NULL;
 	}else{
-		// Traverse and find 
+		// Traverse and find
 		while(ptr != NULL){
 			if(ptr->A == k->A && ptr->B == k->B && ptr->C == k->C && ptr->etype == k->etype){
 				// Found, break and do nothing
@@ -1383,9 +1457,9 @@ void markdown_event_hash::put(triplet * k){
 			}
 			ptr = ptr->next;
 		}
-		// Out of the loop implies insertion 
+		// Out of the loop implies insertion
 		triplet * aux = (triplet *) mp->request_bytes(sizeofTriplet());
-		
+
 		aux->A = k->A;
 		aux->B = k->B;
 		aux->C = k->C;
@@ -1421,7 +1495,7 @@ void markdown_event_hash::remove(triplet * k){
 		ptr = ptr->next;
 	}
 	if(ptr != NULL) previous->next = ptr->next;
-	
+
 }
 
 uint64_t markdown_event_hash::compute_hash(triplet * k){
