@@ -1,7 +1,23 @@
-#ifndef COMMON_FUNCTIONS_H
-#define COMMON_FUNCTIONS_H
+#ifndef __COMMON_FUNCTIONS_H__
+#define __COMMON_FUNCTIONS_H__
+
 #include <pthread.h>
+#include <stdio.h>
+#include <cstdlib>
+#include <sys/time.h>
+#include <inttypes.h>
+#include <ctype.h>
+#include <cfloat>
+#include <string.h>
+#include <math.h>
+#include <set>
+
 #include "structs.h"
+#include "structs.h"
+#include "comparisonFunctions.h"
+#include "alignment_functions.h"
+
+using namespace std;
 
 /**
  * Print the error message 's' and exit(-1)
@@ -132,11 +148,11 @@ void read_words_from_synteny_block_and_align(sequence_manager * seq_man, Synteny
 /*
 	Computes the NW alignment of a sequence (included reverse) (to be used with pthreads)
 */
-void compute_NW_on_pthreads(void * a);
+void * compute_NW_on_pthreads(void * a);
 /*
 	Same as read_words_and_align but for NW
 */
-void * fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_reverse, Synteny_list * sbl, Quickfrag ** qfmat, unsigned char ** qfmat_state, int iGap, int eGap, struct cell ** mc, struct cell ** f0, struct cell ** f1, pthread_t * threads);
+void fill_quickfrag_matrix_NW(sequence_manager * seq_man, char ** seq_for_reverse, Synteny_list * sbl, Quickfrag ** qfmat, unsigned char ** qfmat_state, int iGap, int eGap, struct cell ** mc, struct cell ** f0, struct cell ** f1, pthread_t * threads);
 /*
 	Complements a nucleotide
 */
@@ -189,12 +205,7 @@ void print_memory_usage();
 /*
   TODO dest
 */
-Frags_Groups_List * redo_synteny_system(Synteny_list * sbl);
-
-/*
-  TODO desc
-*/
-void print_frags_grops_list(Frags_Groups_List * fgl);
+FGList * redo_synteny_system(Synteny_list * sbl);
 
 /*
   Prints the standard csv header
@@ -204,16 +215,20 @@ void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len);
 /*
  TODO desc
 */
-void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl, uint64_t gid);
+void save_frags_from_group(FILE * out_file, FragsGroup & fg, heuristic_sorted_list * hsl, uint64_t gid);
 
 /*
  TODO desc
 */
-void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Frags_Groups_List * fgl);
+void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, FGList * fgl);
 
 /*
  TODO desc
 */
-void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Frags_Groups_List * fgl);
+void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, FGList & fgl);
 
-#endif /* COMMON_FUNCTIONS_H */
+bool sim(FragsGroup & fg1, FragsGroup & fg2);
+
+void extend_groups(FGList & fgl, FGList * efgl);
+
+#endif /* __COMMON_FUNCTIONS_H__ */

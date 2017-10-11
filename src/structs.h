@@ -1,10 +1,14 @@
-#ifndef STRUCTS_H
-#define STRUCTS_H
+#pragma once
 
 #include <inttypes.h>
 #include <iostream>
 #include <list>
 #include <vector>
+#include <set>
+#include <atomic>
+#include <thread>
+
+using namespace std;
 
 #pragma pack(push, 1)
 
@@ -230,15 +234,8 @@ typedef struct synteny_list{
     uint64_t id;
 } Synteny_list;
 
-typedef struct frags_group{
-  struct  FragFile * f;
-  struct frags_group * next;
-}Frags_Group;
-
-typedef struct frags_groups_list{
-  Frags_Group * fg;
-  struct frags_groups_list * next;
-}Frags_Groups_List;
+typedef set<FragFile*> FragsGroup;
+typedef set<FragsGroup> FGList;
 
 struct triplet{
     Synteny_list * A;
@@ -590,6 +587,3 @@ struct arguments_multiple_alignment{
     uint64_t n_sequences;
 
 };
-
-
-#endif

@@ -1,20 +1,9 @@
 #define __STDC_FORMAT_MACROS
 
-#include <stdio.h>
-#include <cstdlib>
-#include <sys/time.h>
-#include <inttypes.h>
-#include <ctype.h>
-#include <cfloat>
-#include <string.h>
-#include <math.h>
-#include "structs.h"
-#include "comparisonFunctions.h"
-#include "alignment_functions.h"
-
+#include "commonFunctions.h"
 
 void terror(const char *s) {
-    printf("ERR**** %s ****\n", s);
+    fprintf(stderr, "[ERROR] %s \n", s);
     exit(-1);
 }
 
@@ -1050,7 +1039,6 @@ struct alignment_arguments{
 */
 
 void * compute_NW_on_pthreads(void * a){
-
     alignment_arguments * aa = (alignment_arguments *) a;
 
     *aa->alignment = NWscore2rows(aa->seq_A, 0, aa->end_A, aa->seq_B, 0, aa->end_B, aa->iGap, aa->eGap, aa->mc, aa->f0, aa->f1);
@@ -1677,29 +1665,15 @@ void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len){
     fprintf(f, "========================================================\n");
 }
 
-void print_frags_grops_list(Frags_Groups_List * fgl) {
-  Frags_Groups_List * ptr_fgl;
-  Frags_Group * ptr_fg;
-  uint64_t i = 0;
-
-  for (ptr_fgl = fgl; ptr_fgl != NULL; ptr_fgl = ptr_fgl->next) {
-    fprintf(stdout, "FGL: %"PRIu64"\n", i++);
-    for (ptr_fg = ptr_fgl->fg; ptr_fg != NULL; ptr_fg = ptr_fg->next) {
-      fprintf(stdout, "\t"); printFragment(ptr_fg->f);
-    }
-  }
-
-}
-
-Frags_Groups_List * redo_synteny_system(Synteny_list * sbl){
+FGList * redo_synteny_system(Synteny_list * sbl){
   Synteny_list * ptr_sbl;
   Synteny_block * ptr_sb;
   Block * ptr_b;
-  Frags_Groups_List * ptr_fgl = NULL;
-  Frags_Groups_List * ptr_nfgl;
-  Frags_Group * ptr_fg = NULL;
-  Frags_Group * ptr_nfg;
+
   Frags_list * ptr_fl;
+  FragsGroup new_group;
+
+  auto ptr_frags_groups = new FGList;
 
   // For each synteny block
   for (ptr_sbl = sbl; ptr_sbl != NULL; ptr_sbl = ptr_sbl->next){
@@ -1708,72 +1682,42 @@ Frags_Groups_List * redo_synteny_system(Synteny_list * sbl){
       ptr_b = ptr_sb->b;
       if (ptr_b->genome->id == 0){
         // Add all fragments to fg
-        for (ptr_fl = ptr_b->f_list; ptr_fl != NULL; ptr_fl = ptr_fl->next){
-          ptr_nfg = (Frags_Group*)malloc(sizeof(Frags_Group));
-          ptr_nfg->next = ptr_fg;
-          ptr_nfg->f = ptr_fl->f;
-          ptr_fg = ptr_nfg;
-        }
+        for (ptr_fl = ptr_b->f_list; ptr_fl != NULL; ptr_fl = ptr_fl->next)
+          new_group.insert(ptr_fl->f);
       }
     }
-    ptr_nfgl = (Frags_Groups_List*)malloc(sizeof(Frags_Groups_List));
-    ptr_nfgl->next = ptr_fgl;
-    ptr_nfgl->fg = ptr_fg;
-    ptr_fgl = ptr_nfgl;
-    ptr_fg = NULL;
+    ptr_frags_groups->insert(new_group);
+    new_group.clear();
   }
-  return ptr_fgl;
+  return ptr_frags_groups;
 }
 
-void save_frags_from_group(FILE * out_file, Frags_Group * fg, heuristic_sorted_list * hsl, uint64_t gid) {
-  Frags_Group * ptr_fg;
-  FragFile f;
+void save_frags_from_group(FILE * out_file, FragsGroup & fg, heuristic_sorted_list * hsl, uint64_t gid) {
   uint64_t i, t;
   int v;
+  uint64_t heuristic_val;
 
   i = 0;
-  for (ptr_fg = fg; ptr_fg != NULL; ptr_fg = ptr_fg->next) {
-    f = *ptr_fg->f;
-    hsl->insert(i++, abs(f.xStart - f.yStart));
+  for (auto f : fg) {
+    heuristic_val = f->xStart >= f->yStart ? f->xStart - f->yStart : f->yStart - f->xStart;
+    hsl->insert(i++, heuristic_val);
   }
+
   t = hsl->get_first();
   v = i == 1 ? 0 : 1;
   i = 0;
-  for (ptr_fg = fg; ptr_fg != NULL; ptr_fg = ptr_fg->next){
-    f = *ptr_fg->f;
+  for (auto f : fg){
     if (v != 0)
       v = i == t ? 1 : 2;
-    fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f.xStart, f.yStart, f.xEnd, f.yEnd, f.strand);
-    fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", gid, f.length, f.score, f.ident, f.similarity, ((float)f.ident * 100 / (float)f.length), v);
+    fprintf(out_file, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,", f->xStart, f->yStart, f->xEnd, f->yEnd, f->strand);
+    fprintf(out_file, "%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,0,%d\n", gid, f->length, f->score, f->ident, f->similarity, ((float)f->ident * 100 / (float)f->length), v);
     i++;
   }
   hsl->clear();
 }
 
-/*int contains_repetitions(Synteny_block * ptr_sb, uint64_t seq1_label, uint64_t seq2_label) {
-  uint8_t repetitions;
-  Block * ptr_b;
-
-  repetitions = 0b00;
-
-  while (ptr_sb != NULL) {
-    ptr_b = ptr_sb->b;
-    if (ptr_b->genome->id == seq1_label) {
-      if (repetitions & 0b01) return 1;
-      else repetitions |= 0b01;
-    } else if (ptr_b->genome->id == seq2_label) {
-      if (repetitions & 0b10) return 1;
-      else repetitions |= 0b10;
-    }
-    ptr_sb = ptr_sb->next;
-  }
-
-  return 0;
-}*/
-
-void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, Frags_Groups_List * fgl) {
+void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, sequence_manager * seq_mngr, FGList &fgl) {
   Sequence * seq1, * seq2;
-  Frags_Groups_List * ptr_fgl;
   heuristic_sorted_list hsl;
   uint64_t gid = 0;
   //int repetitions;
@@ -1782,13 +1726,15 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, s
   seq2 = seq_mngr->get_sequence_by_label(seq2_label);
 
   write_header(out_file, seq1->len, seq2->len);
-  for (ptr_fgl = fgl; ptr_fgl != NULL; ptr_fgl = ptr_fgl->next){
-    save_frags_from_group(out_file, ptr_fgl->fg, &hsl, gid);
+  for (auto fg : fgl){
+    printf("Saving group %zu / %zu (%.2lf%%)\r", gid, fgl.size(), 100.0 * gid / fgl.size());
+    fflush(stdout);
+    save_frags_from_group(out_file, fg, &hsl, gid);
     gid++;
   }
 }
 
-void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, Frags_Groups_List * fgl){
+void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manager, FGList &fgl){
   // TODO better descriptions
   // Iterators
   uint64_t i, j;
@@ -1809,5 +1755,52 @@ void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manag
     save_frag_pair(out_file, i, j, seq_manager, fgl);
     fclose(out_file);
   }
+}
 
+constexpr double LENSIM = 1.2;
+constexpr double PROXIM = 0.8;
+static_assert(LENSIM >= 1, "LENSIM must be greater than one");
+static_assert(PROXIM <= 1 && PROXIM >= 0, "PROXIM must be in [0,1]");
+
+bool aprox(uint64_t a, uint64_t b, double mult) {
+  return a > b ? a <= b * mult : b <= a * mult;
+}
+
+bool aproxby(uint64_t a, uint64_t b, uint64_t v) {
+  return a > b ? a <= b + v : b <= a + v;
+}
+
+bool sim(const FragsGroup & fg1, const FragsGroup & fg2, uint64_t len) {
+  uint64_t xs = (*fg2.begin())->xStart, ys = (*fg2.begin())->yStart;
+  for (auto f : fg1)
+    if (aproxby(f->xStart, xs, len * PROXIM)
+      ||aproxby(f->xStart, ys, len * PROXIM)
+      ||aproxby(f->yStart, xs, len * PROXIM)
+      ||aproxby(f->yStart, ys, len * PROXIM))
+      return true;
+  return false;
+}
+
+void extend_groups(FGList & fgl, FGList * efgl) {
+  FragsGroup tmp;
+  size_t i = 0;
+  for (auto iter1 = fgl.begin(); iter1 != fgl.end();) {
+    tmp.insert(iter1->begin(), iter1->end());
+    auto len1 = (*iter1->begin())->length;
+    for (auto iter2 = fgl.begin(); iter2 != fgl.end();) {
+      auto len2 = (*iter2->begin())->length;
+      if (iter1 != iter2 && aprox(len1, len2, LENSIM) && sim(*iter1, *iter2, len1)) {
+        tmp.insert(iter2->begin(), iter2->end());
+        fgl.erase(iter2);
+      }
+      ++iter2;
+    }
+    efgl->insert(tmp);
+    tmp.clear();
+    fgl.erase(*iter1);
+    ++iter1;
+    printf("%.2lf%%\t%zu\r", 100.0 * i / fgl.size(), fgl.size());
+    fflush(stdout);
+    i++;
+  }
 }
