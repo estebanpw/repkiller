@@ -10,6 +10,24 @@
 
 extern uint64_t total_bytes_in_use;
 
+FragsGroup::FragsGroup() {}
+
+bool FragsGroup::sim(FragsGroup & fg, uint64_t proxim) {
+	for (auto x1s : xstarts) for (auto x2s : fg.xstarts) if (aproxby(x1s, x2s, proxim)) return true;
+	for (auto y1s : ystarts) for (auto y2s : fg.ystarts) if (aproxby(y1s, y2s, proxim)) return true;
+	return false;
+}
+
+void FragsGroup::insert(FragFile * f) {
+	groups.insert(f);
+	xstarts.insert(f->xStart);
+	ystarts.insert(f->yStart);
+}
+
+void FragsGroup::merge(const FragsGroup & fg) {
+	for (auto fp : fg.groups) insert(fp);
+}
+
 heuristic_sorted_list::heuristic_sorted_list()
 {
 }

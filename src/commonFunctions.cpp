@@ -1686,7 +1686,7 @@ FGList * redo_synteny_system(Synteny_list * sbl){
           new_group.insert(ptr_fl->f);
       }
     }
-    ptr_frags_groups->insert(new_group);
+    ptr_frags_groups->push_back(new_group);
     new_group.clear();
   }
   return ptr_frags_groups;
@@ -1758,7 +1758,7 @@ void save_all_frag_pairs(char * out_file_base_path, sequence_manager * seq_manag
 }
 
 constexpr double LENSIM = 1.2;
-constexpr double PROXIM = 0.8;
+constexpr double PROXIM = 0.5;
 static_assert(LENSIM >= 1, "LENSIM must be greater than one");
 static_assert(PROXIM <= 1 && PROXIM >= 0, "PROXIM must be in [0,1]");
 
@@ -1766,41 +1766,35 @@ bool aprox(uint64_t a, uint64_t b, double mult) {
   return a > b ? a <= b * mult : b <= a * mult;
 }
 
-bool aproxby(uint64_t a, uint64_t b, uint64_t v) {
-  return a > b ? a <= b + v : b <= a + v;
-}
-
-bool sim(const FragsGroup & fg1, const FragsGroup & fg2, uint64_t len) {
-  uint64_t xs = (*fg2.begin())->xStart, ys = (*fg2.begin())->yStart;
-  for (auto f : fg1)
-    if (aproxby(f->xStart, xs, len * PROXIM)
-      ||aproxby(f->xStart, ys, len * PROXIM)
-      ||aproxby(f->yStart, xs, len * PROXIM)
-      ||aproxby(f->yStart, ys, len * PROXIM))
-      return true;
-  return false;
-}
-
 void extend_groups(FGList & fgl, FGList * efgl) {
   FragsGroup tmp;
   size_t i = 0;
+  size_t total = fgl.size();
   for (auto iter1 = fgl.begin(); iter1 != fgl.end();) {
-    tmp.insert(iter1->begin(), iter1->end());
+    tmp.merge(*iter1);
     auto len1 = (*iter1->begin())->length;
     for (auto iter2 = fgl.begin(); iter2 != fgl.end();) {
       auto len2 = (*iter2->begin())->length;
-      if (iter1 != iter2 && aprox(len1, len2, LENSIM) && sim(*iter1, *iter2, len1)) {
-        tmp.insert(iter2->begin(), iter2->end());
+      if (iter1 != iter2 && aprox(len1, len2, LENSIM) && iter1->sim(*iter2, len1 * PROXIM)) {
+        tmp.merge(*iter2);
         fgl.erase(iter2);
       }
       ++iter2;
+      i++;
     }
-    efgl->insert(tmp);
+    efgl->push_back(tmp);
     tmp.clear();
-    fgl.erase(*iter1);
+    fgl.erase(iter1);
     ++iter1;
-    printf("%.2lf%%\t%zu\r", 100.0 * i / fgl.size(), fgl.size());
-    fflush(stdout);
-    i++;
+    if (i % 5 == 0) print_load(100.0 * i / total);
   }
+}
+
+void print_load(double percentage) {
+  size_t i;
+  printf("[");
+  for (i = 0; i < percentage; i++) printf("|");
+  for (i = percentage; i < 100; i++) printf(".");
+  printf("] %.2lf%%\r", percentage);
+  fflush(stdout);
 }

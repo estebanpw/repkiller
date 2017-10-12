@@ -83,6 +83,7 @@ int main(int ac, char **av) {
         //Switch coordinates of reversed fragments. This can only be done at the end of trimming and not meanwhile!
         if(loaded_frags[i].strand == 'r'){ coord_aux = loaded_frags[i].yStart; loaded_frags[i].yStart = loaded_frags[i].yEnd; loaded_frags[i].yEnd = coord_aux;}
         ht->insert_block(&loaded_frags[i]);
+        print_load(100.0 * i / total_frags);
     }
     //ht->print_hash_table(2);
 

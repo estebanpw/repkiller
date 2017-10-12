@@ -5,8 +5,7 @@
 #include <list>
 #include <vector>
 #include <set>
-#include <atomic>
-#include <thread>
+#include <forward_list>
 
 using namespace std;
 
@@ -234,8 +233,21 @@ typedef struct synteny_list{
     uint64_t id;
 } Synteny_list;
 
-typedef set<FragFile*> FragsGroup;
-typedef set<FragsGroup> FGList;
+class FragsGroup {
+private:
+  set<FragFile*> groups;
+  set<uint64_t> xstarts, ystarts;
+public:
+  FragsGroup();
+  bool sim(FragsGroup & fg, uint64_t proxim);
+  void insert(FragFile * f);
+  void merge(const FragsGroup & fg);
+  void clear() { groups.clear(); xstarts.clear(); ystarts.clear(); };
+  set<FragFile*>::iterator begin() { return groups.begin(); }
+  set<FragFile*>::iterator end()   { return groups.end(); }
+};
+
+typedef vector<FragsGroup> FGList;
 
 struct triplet{
     Synteny_list * A;

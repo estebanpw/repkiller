@@ -231,4 +231,10 @@ bool sim(FragsGroup & fg1, FragsGroup & fg2);
 
 void extend_groups(FGList & fgl, FGList * efgl);
 
+void print_load(double percentage);
+
+inline bool aproxby(uint64_t a, uint64_t b, uint64_t v) {
+  return a > b ? a <= b + v : b <= a + v;
+}
+
 #endif /* __COMMON_FUNCTIONS_H__ */
