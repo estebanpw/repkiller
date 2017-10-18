@@ -56,7 +56,7 @@ int main(int ac, char **av) {
     LOGI("Generating fragment groups...");
     begin = clock();
     FGList * efrags_groups = new FGList();
-    generate_fragment_groups(frag_db, efrags_groups, 0.8, 8.0);
+    generate_fragment_groups(frag_db, efrags_groups, seq_manager, 0.853, 10.0);
     end = clock();
     LOGT("Fragment groups generated succesfully!");
 

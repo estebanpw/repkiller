@@ -7,6 +7,7 @@
 #include <vector>
 #include <set>
 #include <forward_list>
+#include <memory>
 
 using namespace std;
 
@@ -278,18 +279,22 @@ public:
   ~FragmentsDatabase();
 };
 
+struct Ocupation {
+  uint64_t center;
+  uint64_t length;
+  FragsGroup * group;
+  Ocupation(uint64_t center, uint64_t length, FragsGroup * group) : center(center), length(length), group(group) {};
+};
+
 class SequenceOcupationList {
 private:
   double len_pos_ratio, threshold;
-  struct Ocupation {
-    uint64_t center;
-    uint64_t length;
-    FragsGroup * group;
-    Ocupation(uint64_t center, uint64_t length, FragsGroup * group) : center(center), length(length), group(group) {};
-  };
-  std::forward_list<Ocupation> ocupations;
+  size_t max_index;
+  std::forward_list<Ocupation> ** ocupations;
+  const std::forward_list<Ocupation> * get_suitable_indices(uint64_t center) const;
+  double deviation(Ocupation oc, uint64_t center, uint64_t length) const;
 public:
-  SequenceOcupationList(double len_pos_ratio, double threshold);
+  SequenceOcupationList(double len_pos_ratio, double threshold, uint64_t max_length);
   FragsGroup * get_associated_group(uint64_t center, uint64_t length) const;
-  void insert(uint64_t center, uint64_t length, FragsGroup * group) { ocupations.push_front(Ocupation(center, length, group)); };
+  void insert(uint64_t center, uint64_t length, FragsGroup * group);
 };

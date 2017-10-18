@@ -6,33 +6,40 @@ void terror(const char *s) {
     exit(-1);
 }
 
-void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrags_groups, double lensim, double possim) {
+void printFragment(const FragFile & f){
+    fprintf(stdout, "FRAG::(%"PRIu64", %"PRIu64") to (%"PRIu64", %"PRIu64"): [%"PRIu64"]-[%"PRIu64"] %c LEN[%"PRIu64"]\n", f.xStart, f.yStart, f.xEnd, f.yEnd, f.seqX, f.seqY, f.strand, f.length);
+}
+
+void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrags_groups, const sequence_manager & seq_manager, double lensim, double possim) {
   // Create sequence ocupation lists
-  SequenceOcupationList solx(lensim, possim), soly(lensim, possim);
+  auto seqxlen = seq_manager.get_sequence_by_label(0)->len;
+  auto seqylen = seq_manager.get_sequence_by_label(1)->len;
+  auto solx = std::make_unique<SequenceOcupationList>(lensim, possim, seqxlen);
+  auto soly = std::make_unique<SequenceOcupationList>(lensim, possim, seqylen);
   uint64_t n_frags = 0;
 
   // Iterate over all fragments database and map fragments to groups
   for (uint64_t i = 0; i < frags_db.getTotalFrags(); i++) {
     FragFile * f = frags_db.getFragAt(i);
     ++n_frags;
-    auto agx = solx.get_associated_group(f->xStart + f->length / 2, f->length);
+    auto agx = solx->get_associated_group(f->xStart + f->length / 2, f->length);
     if (agx != nullptr) {
       // Add to agx and update soly
       agx->push_front(f);
-      soly.insert(f->yStart + f->length / 2, f->length, agx);
+      soly->insert(f->yStart + f->length / 2, f->length, agx);
     } else {
-      auto agy = soly.get_associated_group(f->yStart + f->length / 2, f->length);
+      auto agy = soly->get_associated_group(f->yStart + f->length / 2, f->length);
       if (agy != nullptr) {
         // Add to agy and update solx
         agy->push_front(f);
-        solx.insert(f->xStart + f->length / 2, f->length, agy);
+        solx->insert(f->xStart + f->length / 2, f->length, agy);
       } else {
         // Create new group with fragment f, add to solx and soly
         FragsGroup * ngroup = new FragsGroup();
         ngroup->push_front(f);
         efrags_groups->push_front(ngroup);
-        soly.insert(f->yStart + f->length / 2, f->length, ngroup);
-        solx.insert(f->xStart + f->length / 2, f->length, ngroup);
+        soly->insert(f->yStart + f->length / 2, f->length, ngroup);
+        solx->insert(f->xStart + f->length / 2, f->length, ngroup);
       }
     }
     print_load(100.0 * n_frags / frags_db.getTotalFrags());

@@ -24,13 +24,13 @@ void endianessConversion(char *source, char *target, int numberOfBytes) {
 /**
  * Function to read a fragment from the specified file
  */
-void readFragment(struct FragFile *frag, FILE *f) {
+bool readFragment(struct FragFile *frag, FILE *f) {
     char tmpArray[sizeof(long double)];
 
     if (htons(1) == 1) {
         //big endian
         if (fread(&frag->diag, sizeof(int64_t), 1, f) != 1) {
-            if (feof(f))return;
+            if (feof(f))return false;
             terror("Error reading the HSP diagonal");
         }
         if (fread(&frag->xStart, sizeof(uint64_t), 1, f) != 1) {
@@ -74,7 +74,7 @@ void readFragment(struct FragFile *frag, FILE *f) {
     } else {
         //little endian
         if (fread(tmpArray, sizeof(int64_t), 1, f) != 1) {
-            if (feof(f))return;
+            if (feof(f))return false;
             terror("Error reading the HSP diagonal");
         }
         endianessConversion(tmpArray, (char *) (&frag->diag), sizeof(int64_t));
@@ -129,6 +129,7 @@ void readFragment(struct FragFile *frag, FILE *f) {
         }
         endianessConversion(tmpArray, (char *) (&frag->evalue), sizeof(long double));
     }
+    return true;
 }
 
 /**

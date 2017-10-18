@@ -23,7 +23,6 @@ FragmentsDatabase::FragmentsDatabase(FILE * frags_file, FILE * lengths_file, seq
     //Divide by size of frag to get the number of fragments
     //Plus one because it might have padding, thus rounding up to bottom and missing 1 struct
     total_frags = 1 + total_frags/sizeof(FragFile);
-    printf("SIZE: %lu\n", sizeof(FragFile));
     //Allocate memory for all frags
     loaded_frags = (struct FragFile *) std::malloc(total_frags * sizeof(FragFile));
     if(loaded_frags == NULL) terror("Could not allocate heap for all fragments");
@@ -36,8 +35,9 @@ FragmentsDatabase::FragmentsDatabase(FILE * frags_file, FILE * lengths_file, seq
     num_frags = 0;
 
   	while(!feof(frags_file)){
-      readFragment(&loaded_frags[num_frags], frags_file);
+      if (!readFragment(&loaded_frags[num_frags], frags_file)) break;
 			if (loaded_frags[num_frags].seqX != 0) continue;
+      //printFragment(loaded_frags[num_frags]);
     	++num_frags;
 			if(num_frags > total_frags) terror("Something went wrong. More fragments than expected");
     }
@@ -282,20 +282,57 @@ sequence_manager::~sequence_manager(){
 	std::free(this->sequences);
 }
 
-SequenceOcupationList::SequenceOcupationList(double len_pos_ratio, double threshold)
-	: len_pos_ratio(len_pos_ratio), threshold(threshold) {}
+SequenceOcupationList::SequenceOcupationList(double len_pos_ratio, double threshold, uint64_t seq_size)
+	: len_pos_ratio(len_pos_ratio),
+    threshold(threshold),
+    max_index(seq_size / 100),
+    ocupations(new std::forward_list<Ocupation>*[max_index + 1]) {
+  for (size_t i = 0; i < max_index + 1; i++)
+    ocupations[i] = new std::forward_list<Ocupation>();
+}
+
+const std::forward_list<Ocupation> * SequenceOcupationList::get_suitable_indices(uint64_t center) const {
+  return ocupations[center / 100];
+}
+
+double SequenceOcupationList::deviation(Ocupation oc, uint64_t center, uint64_t length) const {
+  uint64_t dif_len = length > oc.length ? length - oc.length : oc.length - length;
+  uint64_t dif_cen = center > oc.center ? center - oc.center : oc.center - center;
+  return dif_len * len_pos_ratio + dif_cen * (1 - len_pos_ratio);
+}
 
 FragsGroup * SequenceOcupationList::get_associated_group(uint64_t center, uint64_t length) const {
 	FragsGroup * fg = nullptr;
-	double deviation = threshold;
-	for (auto oc : ocupations) {
-		uint64_t dif_len = length > oc.length ? length - oc.length : oc.length - length;
-		uint64_t dif_cen = center > oc.center ? center - oc.center : oc.center - center;
-		double curr_dev = dif_len * len_pos_ratio + dif_cen * (1 - len_pos_ratio);
-		if (curr_dev < deviation) {
-			deviation = curr_dev;
+	double d = threshold;
+  auto sind = get_suitable_indices(center);
+	for (auto oc : *sind) {
+    double curr_dev = deviation(oc, center, length);
+		if (curr_dev < d) {
+			d = curr_dev;
 			fg = oc.group;
 		}
 	}
 	return fg;
+}
+
+void SequenceOcupationList::insert(uint64_t center, uint64_t length, FragsGroup * group) {
+  // Obtain index range
+  size_t min_idx = center, max_idx = center;
+  Ocupation noc(center, length, group);
+
+  // Brute force min index calc
+  double d = deviation(noc, min_idx, length) * 10;
+  while (d < threshold && min_idx > 0) {
+    min_idx--;
+    d = deviation(noc, min_idx, length) * 10;
+  }
+
+  // Brute force max index calc
+  d = deviation(noc, max_idx, length) * 10;
+  while (d < threshold && max_idx < max_index - 1) {
+    max_idx++;
+    d = deviation(noc, max_idx, length) * 10;
+  }
+
+  for (size_t i = min_idx / 100; i <= max_idx / 100; i++) ocupations[i]->push_front(noc);
 }

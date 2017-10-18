@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <cfloat>
 #include <string.h>
+#include <memory>
 #include <math.h>
 
 #include "structs.h"
@@ -30,8 +31,9 @@ char buffered_fgetc(char *buffer, uint64_t *pos, uint64_t *read, FILE *f);
 */
 int exists_file(const char * file_name);
 
+void printFragment(const FragFile & f);
 
-void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrags_groups, double len_pos_ratio, double threshold);
+void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrags_groups, const sequence_manager & seq_manager, double len_pos_ratio, double threshold);
 
 /*
 	Prints memory requested from heap

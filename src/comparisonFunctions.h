@@ -6,7 +6,7 @@
 /**
  * Function to read a fragment from the specified file
  */
-void readFragment(struct FragFile *frag, FILE *f);
+bool readFragment(struct FragFile *frag, FILE *f);
 
 /**
  * Function to write a fragment to the specified file
