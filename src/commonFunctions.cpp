@@ -9,36 +9,23 @@ void print_all(){
         fprintf(stdout, "           --help      Shows the help for program usage\n");
 }
 
-bool init_args(const vector<string> & args, FILE * & multifrags, string & out_file_base_path,
+void init_args(const vector<string> & args, FILE * & multifrags, string & out_file_base_path,
                string & path_frags, double & len_pos_ratio, double & threshold){
         out_file_base_path.clear();
         path_frags.clear();
 
-        if (args.size() < 4) {
-                cerr << "Incorrect argumnt count" << endl;
-                return false;
-        }
+        if (args.size() < 4) throw invalid_argument("Invalid number of arguments.");
 
         path_frags = args.at(1);
         multifrags = fopen64(path_frags.c_str(), "rb");
-        if (multifrags == nullptr) {
-                cerr << "Could not open file " << path_frags << "." << endl;
-                return false;
-        }
+        if (multifrags == nullptr) throw runtime_error("Could not open input file " + path_frags + ".");
         out_file_base_path = args.at(2);
-        if (out_file_base_path.empty()) return false;
+        if (out_file_base_path.empty()) throw runtime_error("Output file name is missing");
 
         len_pos_ratio = stod(args.at(3), nullptr);
-        if (len_pos_ratio < 0 or len_pos_ratio > 1) {
-                cerr << "LPRatio of value: " << len_pos_ratio << " is out of bounds.";
-                return false;
-        }
+        if (len_pos_ratio < 0 or len_pos_ratio > 1) throw invalid_argument("Ratio between length and position must be in [0,1] range.");
         threshold = stod(args.at(4), nullptr);
-        if (threshold < 0) {
-                cerr << "Threshold of value: " << threshold << " is out of bounds.";
-                return false;
-        }
-        return true;
+        if (threshold < 0) throw invalid_argument("Threshold must be equal or greater than 0");
         /*
            for (auto arg = args.begin(); arg != args.end(); arg++) {
                 if (*arg == "--help") {
@@ -77,13 +64,14 @@ void printFragment(const FragFile & f){
         fprintf(stdout, "FRAG::(%" PRIu64 ", %" PRIu64 ") to (%" PRIu64 ", %" PRIu64 "): [%" PRIu64 "]-[%" PRIu64 "] %c LEN[%" PRIu64 "]\n", f.xStart, f.yStart, f.xEnd, f.yEnd, f.seqX, f.seqY, f.strand, f.length);
 }
 
-void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrags_groups, const sequence_manager & seq_manager, double lensim, double possim) {
+size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrags_groups, const sequence_manager & seq_manager, double lensim, double possim) {
         // Create sequence ocupation lists
         auto seqxlen = seq_manager.get_sequence_by_label(0)->len;
         auto seqylen = seq_manager.get_sequence_by_label(1)->len;
         auto solx = make_unique<SequenceOcupationList>(lensim, possim, seqxlen);
         auto soly = make_unique<SequenceOcupationList>(lensim, possim, seqylen);
         uint64_t n_frags = 0;
+        size_t n_groups = 0;
 
         // Iterate over all fragments database and map fragments to groups
         for (uint64_t i = 0; i < frags_db.getTotalFrags(); i++) {
@@ -103,6 +91,7 @@ void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrag
                         } else {
                                 // Create new group with fragment f, add to solx and soly
                                 FragsGroup * ngroup = new FragsGroup();
+                                n_groups++;
                                 ngroup->push_front(f);
                                 efrags_groups->push_front(ngroup);
                                 soly->insert(f->yStart + f->length / 2, f->length, ngroup);
@@ -111,6 +100,7 @@ void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrag
                 }
                 if (not (i % 1000)) print_load(100.0 * n_frags / frags_db.getTotalFrags());
         }
+        return n_groups;
 }
 
 void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len){
@@ -184,10 +174,7 @@ void save_all_frag_pairs(const string & out_file_base_path, const sequence_manag
                         // Path to svc
                         string out_file_name = out_file_base_path + ".csv";
                         out_file = fopen64(out_file_name.c_str(), "w");
-                        if (out_file == nullptr) {
-                                cerr << "Could not open output file " + out_file_name << " with error " << strerror(errno) << endl;
-                                exit(-1);
-                        }
+                        if (out_file == nullptr) throw runtime_error("Could not open output directory " + out_file_name);
                         save_frag_pair(out_file, i, j, seq_manager, fgl);
                         fclose(out_file);
                 }

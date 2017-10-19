@@ -37,9 +37,8 @@ FragmentsDatabase::FragmentsDatabase(FILE * frags_file, FILE * lengths_file, seq
                 if (loaded_frags[num_frags].seqX != 0) continue;
                 //printFragment(loaded_frags[num_frags]);
                 ++num_frags;
-                if(num_frags > total_frags) terror("Something went wrong. More fragments than expected");
+                if(num_frags > total_frags) throw runtime_error("Unexpected number of fragments");
         }
-        printf("Loaded %" PRIu64 " fragments.\n", num_frags);
 }
 
 FragmentsDatabase::~FragmentsDatabase() {

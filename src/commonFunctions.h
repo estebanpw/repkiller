@@ -9,7 +9,7 @@
 #include <string.h>
 #include <memory>
 #include <math.h>
-#include <errno.h>
+#include <stdexcept>
 
 #include "structs.h"
 #include "structs.h"
@@ -19,7 +19,7 @@ using namespace std;
 
 void print_all();
 
-bool init_args(const vector<string> & args, FILE * & multifrags, string & out_file_base_path,
+void init_args(const vector<string> & args, FILE * & multifrags, string & out_file_base_path,
                string & path_frags, double & len_pos_ratio, double & threshold);
 /**
  * Print the error message 's' and exit(-1)
@@ -38,7 +38,7 @@ int exists_file(const char * file_name);
 
 void printFragment(const FragFile & f);
 
-void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrags_groups, const sequence_manager & seq_manager, double len_pos_ratio, double threshold);
+size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrags_groups, const sequence_manager & seq_manager, double len_pos_ratio, double threshold);
 
 /*
    Prints memory requested from heap
