@@ -9,6 +9,7 @@
 #include <string.h>
 #include <memory>
 #include <math.h>
+#include <errno.h>
 
 #include "structs.h"
 #include "structs.h"
@@ -18,7 +19,8 @@ using namespace std;
 
 void print_all();
 
-void init_args(const std::vector<std::string> & args, FILE * & multifrags, std::string & out_file_base_path, std::string & path_frags);
+bool init_args(const vector<string> & args, FILE * & multifrags, string & out_file_base_path,
+               string & path_frags, double & len_pos_ratio, double & threshold);
 /**
  * Print the error message 's' and exit(-1)
  */
@@ -61,6 +63,6 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, c
 /*
    TODO desc
  */
-void save_all_frag_pairs(const std::string & out_file_base_path, const sequence_manager & seq_manager, FGList & fgl);
+void save_all_frag_pairs(const string & out_file_base_path, const sequence_manager & seq_manager, FGList & fgl);
 
 void print_load(double percentage);

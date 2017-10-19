@@ -4,37 +4,68 @@
 
 void print_all(){
         fprintf(stdout, "USAGE:\n");
-        fprintf(stdout, "           repkiller -multifrags [query] -out [results]\n");
+        fprintf(stdout, "           ./repkiller <multifrags_path> <output_path> <lengthpos_rel> <threshold>\n");
         fprintf(stdout, "OPTIONAL:\n");
         fprintf(stdout, "           --help      Shows the help for program usage\n");
 }
 
-void init_args(const std::vector<std::string> & args, FILE * & multifrags, std::string & out_file_base_path, std::string & path_frags){
+bool init_args(const vector<string> & args, FILE * & multifrags, string & out_file_base_path,
+               string & path_frags, double & len_pos_ratio, double & threshold){
         out_file_base_path.clear();
         path_frags.clear();
-        for (auto arg = args.begin(); arg != args.end(); arg++) {
+
+        if (args.size() < 4) {
+                cerr << "Incorrect argumnt count" << endl;
+                return false;
+        }
+
+        path_frags = args.at(1);
+        multifrags = fopen64(path_frags.c_str(), "rb");
+        if (multifrags == nullptr) {
+                cerr << "Could not open file " << path_frags << "." << endl;
+                return false;
+        }
+        out_file_base_path = args.at(2);
+        if (out_file_base_path.empty()) return false;
+
+        len_pos_ratio = stod(args.at(3), nullptr);
+        if (len_pos_ratio < 0 or len_pos_ratio > 1) {
+                cerr << "LPRatio of value: " << len_pos_ratio << " is out of bounds.";
+                return false;
+        }
+        threshold = stod(args.at(4), nullptr);
+        if (threshold < 0) {
+                cerr << "Threshold of value: " << threshold << " is out of bounds.";
+                return false;
+        }
+        return true;
+        /*
+           for (auto arg = args.begin(); arg != args.end(); arg++) {
                 if (*arg == "--help") {
                         print_all();
                         exit(1);
-                }
-                if(*arg == "-multifrags") {
+                } else if (*arg == "-multifrags") {
                         arg++;
                         if (arg >= args.end()) terror("ERR¿?");
                         multifrags = fopen64(arg->c_str(), "rb");
                         path_frags = *arg;
                         if(multifrags==NULL) terror("Could not open multifrags file");
-                }
-                if(*arg == "-out") {
+                } else if (*arg == "-out") {
                         arg++;
                         if (arg >= args.end()) terror("ERR¿?");
                         out_file_base_path = *arg;
-                }
-        }
+                } else if (*arg == "-lplen") {
 
-        if(multifrags==nullptr or out_file_base_path.empty() or path_frags.empty()) {
+                } else if (*arg == "-threshold") {
+
+                }
+           }
+
+           if(multifrags==nullptr or out_file_base_path.empty() or path_frags.empty()) {
                 print_all();
                 terror("A frags file and an output file must be specified");
-        }
+           }
+         */
 }
 
 void terror(const char *s) {
@@ -50,8 +81,8 @@ void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrag
         // Create sequence ocupation lists
         auto seqxlen = seq_manager.get_sequence_by_label(0)->len;
         auto seqylen = seq_manager.get_sequence_by_label(1)->len;
-        auto solx = std::make_unique<SequenceOcupationList>(lensim, possim, seqxlen);
-        auto soly = std::make_unique<SequenceOcupationList>(lensim, possim, seqylen);
+        auto solx = make_unique<SequenceOcupationList>(lensim, possim, seqxlen);
+        auto soly = make_unique<SequenceOcupationList>(lensim, possim, seqylen);
         uint64_t n_frags = 0;
 
         // Iterate over all fragments database and map fragments to groups
@@ -78,8 +109,7 @@ void generate_fragment_groups(const FragmentsDatabase & frags_db, FGList * efrag
                                 solx->insert(f->xStart + f->length / 2, f->length, ngroup);
                         }
                 }
-                if (not (i % 1000))
-                        print_load(100.0 * n_frags / frags_db.getTotalFrags());
+                if (not (i % 1000)) print_load(100.0 * n_frags / frags_db.getTotalFrags());
         }
 }
 
@@ -142,7 +172,7 @@ void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, c
         }
 }
 
-void save_all_frag_pairs(const std::string & out_file_base_path, const sequence_manager & seq_manager, FGList & fgl){
+void save_all_frag_pairs(const string & out_file_base_path, const sequence_manager & seq_manager, FGList & fgl){
         // Iterators
         uint64_t i, j;
         // Number of sequences involved
@@ -152,9 +182,12 @@ void save_all_frag_pairs(const std::string & out_file_base_path, const sequence_
         // For each pair of sequences
         for(i=0; i<n_seq; i++) for(j=i+1; j<n_seq; j++) {
                         // Path to svc
-                        std::string out_file_name = out_file_base_path + "-" + std::to_string(i) + "-" + std::to_string(j) + ".csv";
-                        out_file = fopen64(out_file_name.c_str(), "wt");
-                        if (out_file == NULL) terror("Could not load output file");
+                        string out_file_name = out_file_base_path + ".csv";
+                        out_file = fopen64(out_file_name.c_str(), "w");
+                        if (out_file == nullptr) {
+                                cerr << "Could not open output file " + out_file_name << " with error " << strerror(errno) << endl;
+                                exit(-1);
+                        }
                         save_frag_pair(out_file, i, j, seq_manager, fgl);
                         fclose(out_file);
                 }

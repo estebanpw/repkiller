@@ -22,7 +22,7 @@ FragmentsDatabase::FragmentsDatabase(FILE * frags_file, FILE * lengths_file, seq
         //Plus one because it might have padding, thus rounding up to bottom and missing 1 struct
         total_frags = 1 + total_frags/sizeof(FragFile);
         //Allocate memory for all frags
-        loaded_frags = (struct FragFile *) std::malloc(total_frags * sizeof(FragFile));
+        loaded_frags = (struct FragFile *) malloc(total_frags * sizeof(FragFile));
         if(loaded_frags == NULL) terror("Could not allocate heap for all fragments");
 
         //Skip headers
@@ -43,7 +43,7 @@ FragmentsDatabase::FragmentsDatabase(FILE * frags_file, FILE * lengths_file, seq
 }
 
 FragmentsDatabase::~FragmentsDatabase() {
-        std::free(loaded_frags);
+        free(loaded_frags);
 }
 
 heuristic_sorted_list::heuristic_sorted_list()
@@ -133,7 +133,7 @@ uint64_t sequence_manager::load_sequences_descriptors(FILE * lengths_file){
         fseeko(lengths_file, 0L, SEEK_SET);
 
         //Allocate heap for sequences struct to hold lengths and ids
-        this->sequences = (Sequence *) std::malloc(n_sequences*sizeof(Sequence));
+        this->sequences = (Sequence *) malloc(n_sequences*sizeof(Sequence));
 
         if(this->sequences == NULL) terror("Could not allocate memory for sequence descriptors");
 
@@ -179,21 +179,21 @@ Sequence * sequence_manager::get_sequence_by_label(uint64_t label) const {
 sequence_manager::~sequence_manager(){
         uint64_t i;
         for(i=0; i<this->n_sequences; i++) {
-                if(this->sequences[i].seq != NULL) std::free(this->sequences[i].seq);
+                if(this->sequences[i].seq != NULL) free(this->sequences[i].seq);
         }
-        std::free(this->sequences);
+        free(this->sequences);
 }
 
 SequenceOcupationList::SequenceOcupationList(double len_pos_ratio, double threshold, uint64_t seq_size)
         : len_pos_ratio(len_pos_ratio),
         threshold(threshold),
         max_index(seq_size / 100),
-        ocupations(new std::forward_list<Ocupation>*[max_index + 1]) {
+        ocupations(new forward_list<Ocupation>*[max_index + 1]) {
         for (size_t i = 0; i < max_index + 1; i++)
-                ocupations[i] = new std::forward_list<Ocupation>();
+                ocupations[i] = new forward_list<Ocupation>();
 }
 
-const std::forward_list<Ocupation> * SequenceOcupationList::get_suitable_indices(uint64_t center) const {
+const forward_list<Ocupation> * SequenceOcupationList::get_suitable_indices(uint64_t center) const {
         return ocupations[center / 100];
 }
 

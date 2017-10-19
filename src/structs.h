@@ -130,8 +130,6 @@ typedef struct linked_list_pos {
         struct linked_list_pos * next;
 } llpos;
 
-
-
 //A block that belongs to a genome and that has some synteny level (conserved block)
 typedef struct block {
         uint64_t start; //Starting coordinate
@@ -279,8 +277,8 @@ class SequenceOcupationList {
 private:
 double len_pos_ratio, threshold;
 size_t max_index;
-std::forward_list<Ocupation> ** ocupations;
-const std::forward_list<Ocupation> * get_suitable_indices(uint64_t center) const;
+forward_list<Ocupation> ** ocupations;
+const forward_list<Ocupation> * get_suitable_indices(uint64_t center) const;
 double deviation(Ocupation oc, uint64_t center, uint64_t length) const;
 public:
 SequenceOcupationList(double len_pos_ratio, double threshold, uint64_t max_length);
