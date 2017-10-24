@@ -7,10 +7,11 @@
 #include <string>
 #include <ctype.h>
 #include <float.h>
+#include <thread>
 
+#include "FragmentsDatabase.h"
 #include "structs.h"
 #include "commonFunctions.h"
-#include "comparisonFunctions.h"
 
 #define LOGT(s) fprintf(stdout, "[INFO] %s T = %e\n", s, (double)(end-begin)/CLOCKS_PER_SEC);
 #define LOGI(s) fprintf(stdout, "[INFO] %s\n", s);
@@ -26,14 +27,14 @@ int main(int argc, char * argv []) {
         // Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%
         FILE * frags_file = nullptr, * lengths_file = nullptr;
         try {
-                init_args(args, frags_file, out_file_base_path, multifrags_path, len_pos_ratio, threshold);
+                init_args(args, frags_file, lengths_file, out_file_base_path, multifrags_path, len_pos_ratio, threshold);
         } catch (const invalid_argument & e) {
                 cerr << e.what() << endl;
                 print_all();
                 throw e;
         }
 
-        cout << "Running REPKILLER v0.1 by Carles Bordas" << endl;
+        cout << "Running REPKILLER v0.1 by bitlab - Arquitectura de Computadores" << endl;
         cout << "\t# Lenght-position ratio: " << len_pos_ratio << endl;
         cout << "\t# Threshold: " << threshold << endl;
 
@@ -42,11 +43,6 @@ int main(int argc, char * argv []) {
         double elapsed;
         // The sequences manager to store ids, lengths, etc
         sequence_manager seq_manager;
-
-        // Concat .lengths to path of multifrags %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        string path_lengths = multifrags_path + ".lengths";
-        lengths_file = fopen64(path_lengths.c_str(), "rb");
-        if (lengths_file == nullptr) terror("Could not open input lengths file");
 
         // Load fragments into array %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         cout << "Loading fragments into memory..." << endl;
@@ -61,25 +57,34 @@ int main(int argc, char * argv []) {
         fclose(lengths_file);
 
         // Generate fragment groups %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        cout << "Generated fragment groups... (this might take a while)" << endl;
+        cout << "Generating fragment groups... (this might take a while)" << endl;
         begin = clock();
-        FGList * efrags_groups = new FGList();
-        auto n_groups = generate_fragment_groups(frag_db, efrags_groups, seq_manager, len_pos_ratio, threshold);
+        FGList efrags_groups;
+        (void) generate_fragment_groups(frag_db, efrags_groups, seq_manager, len_pos_ratio, threshold);
         end = clock();
         cout << "Groups created succesfully!" << endl;
-        cout << "\t# Number of groups: " << n_groups << endl;
+        cout << "\t# Number of groups: " << efrags_groups.size() << endl;
+        cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s" << endl;
+
+        // Sort groups by heuristic value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        cout << "Sorting fragments by heuristic value" << endl;
+        begin = clock();
+        sort_groups(efrags_groups);
+        end = clock();
+        cout << "Fragments groups sorted succesfully!" << endl;
         cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s" << endl;
 
         // Save results in file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         cout << "Saving results into secondary memory..." << endl;
         begin = clock();
         try {
-                save_all_frag_pairs(out_file_base_path, seq_manager, *efrags_groups);
+                save_all_frag_pairs(out_file_base_path, seq_manager, efrags_groups);
         } catch (const runtime_error & e) {
                 cout << "Coult not access specified output path " << out_file_base_path << ", saving results into ./repkillerresults.csv" << endl;
-                save_all_frag_pairs("repkillerresults", seq_manager, *efrags_groups);
+                save_all_frag_pairs("repkillerresults", seq_manager, efrags_groups);
         }
         end = clock();
         cout << "Fragments saved into csv file." << endl;
+        cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s" << endl;
 
 }

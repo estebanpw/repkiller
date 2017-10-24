@@ -8,64 +8,9 @@
 #include <set>
 #include <forward_list>
 #include <memory>
+#include <deque>
 
 using namespace std;
-
-#define SEQ_REALLOC 5000000
-//#define MAX_READ_SIZE 5000 //Maximum length of read to have a portion of the table allocated
-#define MAX_WINDOW_SIZE 70 //Maximum window length to explore NW table
-#define SYN_TABLE_REALLOC 10000
-#define INIT_SEQS 20
-#define INIT_ANNOTS 5000
-#define INIT_BLOCKS_TO_ADD 50
-#define INIT_REARRANGEMENT_CAPACITY 100
-#define WRITE_BUFFER_CAPACITY 100000 //100 KB
-#define READLINE 2000
-#define READBUF 50000000 //50MB
-#define INIT_TRIM_FRAGS 10000
-#define TABLE_RATE 100 //hash table lengh divisor
-#define INIT_CANDIDATES_ALIGN 100 //For wordbucket list
-#define PRINT_RATE 70
-#define MAX_LINE 2048
-
-#define MAX_MEM_POOLS 256
-#define POOL_SIZE 1024*1024*128 //128 MB
-
-#define NOFRAG 0
-#define OPENFRAG 1
-#define COVERFRAG 2
-#define CLOSEFRAG 3
-
-#define FORWARD 1
-#define REVERSE 2
-#define MIXED 3
-
-#define INSERTION 1
-#define DELETION 2
-#define NOTHING 3
-
-#define POINT 4
-
-#define UINT64_T_MAX 0xFFFFFFFFFFFFFFFF
-#define SEQUENCE_INDELS_LEN 1000*1000*2 // 1 M
-
-#define IGAP -24
-#define EGAP -8
-
-#define EVENTS_WRITE_TIME 5
-
-#define PRINT_BLOCKS 1
-#define PRINT_BLOCKS_AND_FRAGS 2
-
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
-
-// To globally measure RAM usage
-extern uint64_t total_bytes_in_use;
-
-//Class prototypes
-class memory_pool;
-class sequence_manager;
 
 //Struct for FragHits, af2png and leeFrag programs
 struct FragFile {
@@ -116,68 +61,7 @@ typedef struct sequence {
         uint64_t acum; //Accumulated length from the sequences found before in the file (if any)
         uint32_t coverage; //The percentage of bases covered by fragments of a minimum length
         uint64_t n_frags; //Number of fragments that the sequence had
-        char * seq; //DNA sequence
 } Sequence;
-
-// A collection of fragments
-typedef struct frags_list {
-        struct FragFile * f;
-        struct frags_list * next;
-} Frags_list;
-
-typedef struct linked_list_pos {
-        uint64_t pos;
-        struct linked_list_pos * next;
-} llpos;
-
-//A block that belongs to a genome and that has some synteny level (conserved block)
-typedef struct block {
-        uint64_t start; //Starting coordinate
-        uint64_t end;   //Ending coordinate
-        uint64_t order; //Order of block according to the genome
-        Frags_list * f_list; //List of fragments that compose it
-        Sequence * genome;  //A pointer to the genome to which it belongs
-        struct synteny_list * present_in_synteny; //To tell whether it has already been used in a synteny block
-        unsigned char strand_in_synteny; //The strand that it has at the synteny block
-        struct block * prev;
-        struct block * next;
-        uint64_t id;
-} Block;
-
-//A struct to hold arrays of blocks
-typedef struct holder {
-        Block ** cons_AB;
-        Block ** cons_BC;
-        uint64_t n_sequences;
-} Holder;
-
-//Word struct that identifies a kmer in a sequence
-typedef struct word {
-        uint64_t hash;
-        uint64_t pos;
-        char strand;
-        Block * b;
-} Word;
-
-typedef struct point {
-        uint64_t x;
-        uint64_t y;
-} Point;
-
-//A synteny block is a collection of blocks
-typedef struct synteny_block {
-        Block * b;
-        struct synteny_block * next;
-} Synteny_block;
-
-//A synteny list is a collection of synteny blocks
-typedef struct synteny_list {
-        Synteny_block * sb;
-        uint64_t synteny_level;
-        struct synteny_list * next;
-        struct synteny_list * prev;
-        uint64_t id;
-} Synteny_list;
 
 /*
    class FragsGroup {
@@ -194,19 +78,8 @@ typedef struct synteny_list {
    set<FragFile*>::iterator end()   { return groups.end(); }
    };*/
 
-typedef forward_list<FragFile*> FragsGroup;
-typedef forward_list<FragsGroup*> FGList;
-
-//Bucket structs to hold blocks in hash table (1) and words in dictionary (2)
-typedef struct bucket {
-        Block b;
-        struct bucket * next;
-} Bucket;
-
-typedef struct wordbucket {
-        Word w;
-        struct wordbucket * next;
-} Wordbucket;
+typedef vector<const FragFile*> FragsGroup;
+typedef vector<FragsGroup*> FGList;
 
 // Sequence class management
 class sequence_manager
@@ -224,45 +97,6 @@ uint64_t get_number_of_sequences() const {
 }
 void print_sequences_data() const;
 ~sequence_manager();
-};
-
-// Bucket of linked list for heuristic sorting
-struct hs_bucket {
-        uint64_t id;
-        uint64_t value;
-        struct hs_bucket * next;
-};
-
-class heuristic_sorted_list {
-private:
-hs_bucket * head = NULL;
-void insert_new(uint64_t id, uint64_t value, hs_bucket * prev);
-void insert_at(uint64_t id, uint64_t value, hs_bucket * prev);
-public:
-heuristic_sorted_list();
-void insert(uint64_t id, uint64_t value);
-uint64_t get_first() {
-        return this->head->id;
-};
-bool contains(uint64_t id);
-void print();
-void clear();
-~heuristic_sorted_list();
-};
-
-class FragmentsDatabase {
-private:
-FragFile * loaded_frags;
-uint64_t num_frags = 0;
-public:
-FragmentsDatabase(FILE * frags_file, FILE * lengths_file, sequence_manager & seq_manager);
-FragFile * getFragAt(size_t index) const {
-        return &loaded_frags[index];
-}
-uint64_t getTotalFrags() const {
-        return num_frags;
-}
-~FragmentsDatabase();
 };
 
 struct Ocupation {
