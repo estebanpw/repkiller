@@ -7,7 +7,7 @@ BIN=bin
 all: repkiller
 
 repkiller:
-	$(CXX) $(CFLAGS) $(SRC)/commonFunctions.cpp -lm $(SRC)/comparisonFunctions.cpp $(SRC)/class_structs.cpp $(SRC)/repkiller.cpp -lpthread -o $(BIN)/repkiller
+	$(CXX) $(CFLAGS) $(SRC)/FragmentsDatabase.cpp $(SRC)/commonFunctions.cpp -lm $(SRC)/class_structs.cpp $(SRC)/repkiller.cpp -lpthread -o $(BIN)/repkiller
 
 clean:
 	rm -rf $(BIN)/repkiller
