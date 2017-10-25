@@ -63,4 +63,6 @@ void save_all_frag_pairs(const string & out_file_base_path, const sequence_manag
 
 void print_load(double percentage);
 
-void sort_groups(FGList & fgl);
+void sort_groups(FGList & fgl, const size_t * diag_func);
+
+void generate_diagonal_func(const FragmentsDatabase & fdb, size_t * diag_func);

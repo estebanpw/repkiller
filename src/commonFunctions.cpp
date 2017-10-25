@@ -52,37 +52,35 @@ size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList & efr
         size_t i = 0;
 
         // Iterate over all fragments database and map fragments to groups
-        for (auto f = frags_db.cbegin(); f != frags_db.cend(); f++) {
-                auto & solx = f->strand == 'f' ? solxf : solxr;
-                auto & soly = f->strand == 'f' ? solyf : solyr;
-                i++;
-                if (not (i % 5000)) print_load(100.0 * i / frags_db.getTotalFrags());
+        for (const auto & fl : frags_db) for (const auto f : fl) {
+                        auto & solx = f->strand == 'f' ? solxf : solxr;
+                        auto & soly = f->strand == 'f' ? solyf : solyr;
+                        i++;
+                        if (not (i % 5000)) print_load(100.0 * i / frags_db.getTotalFrags());
 
-                auto agx = solx->get_associated_group(f->xStart + f->length / 2, f->length);
-                if (agx != nullptr) {
-                        // Add to agx and update soly
-                        agx->push_back(f);
-                        soly->insert(f->yStart + f->length / 2, f->length, agx);
-                        continue;
+                        auto agx = solx->get_associated_group(f->xStart + f->length / 2, f->length);
+                        if (agx != nullptr) {
+                                // Add to agx and update soly
+                                agx->push_back(f);
+                                soly->insert(f->yStart + f->length / 2, f->length, agx);
+                                continue;
+                        }
+
+                        auto agy = soly->get_associated_group(f->yStart + f->length / 2, f->length);
+                        if (agy != nullptr) {
+                                // Add to agy and update solx
+                                agy->push_back(f);
+                                solx->insert(f->xStart + f->length / 2, f->length, agy);
+                                continue;
+                        }
+
+                        // Create new group with fragment f, add to solx and soly
+                        FragsGroup * ngroup = new FragsGroup();
+                        ngroup->push_back(f);
+                        efrags_groups.push_back(ngroup);
+                        solx->insert(f->xStart + f->length / 2, f->length, ngroup);
+                        soly->insert(f->yStart + f->length / 2, f->length, ngroup);
                 }
-
-                auto agy = soly->get_associated_group(f->yStart + f->length / 2, f->length);
-                if (agy != nullptr) {
-                        // Add to agy and update solx
-                        agy->push_back(f);
-                        solx->insert(f->xStart + f->length / 2, f->length, agy);
-                        continue;
-                }
-
-                // Create new group with fragment f, add to solx and soly
-                FragsGroup * ngroup = new FragsGroup();
-                ngroup->push_back(f);
-                efrags_groups.push_back(ngroup);
-                cout << "Frag X at (" << f->xStart << ", " << f->xEnd << "): LEN[" << f->length << "] CENTER[" << (f->xStart + f->length / 2) << "]\n";
-                solx->insert(f->xStart + f->length / 2, f->length, ngroup);
-                cout << "Frag Y at (" << f->xStart << ", " << f->yEnd << "): LEN[" << f->length << "] CENTER[" << (f->yStart + f->length / 2) << "]\n";
-                soly->insert(f->yStart + f->length / 2, f->length, ngroup);
-        }
         cout << flush;
         return efrags_groups.size();
 }
@@ -163,9 +161,35 @@ void print_load(double percentage) {
         fflush(stdout);
 }
 
-void sort_groups(FGList & fgl) {
-        static auto const comp = [](const FragFile * a, const FragFile * b){
-                                         return (a->xStart > a->yStart ? a->xStart - a->yStart : a->yStart - a->xStart) < (b->xStart > b->yStart ? b->xStart - b->yStart : b->yStart - b->xStart);
+void sort_groups(FGList & fgl, const size_t * diag_func) {
+        static auto const comp = [&diag_func](const FragFile * a, const FragFile * b){
+                                         size_t ha, hb;
+                                         size_t dx;
+                                         dx = diag_func[a->xStart / 10];
+                                         ha = a->yStart > dx ? a->yStart - dx : dx - a->yStart;
+                                         dx = diag_func[b->xStart / 10];
+                                         hb = b->yStart > dx ? b->yStart - dx : dx - b->yStart;
+                                         return ha < hb;
                                  };
         for (auto fg : fgl) if (fg->size() > 1) sort(fg->begin(), fg->end(), comp);
+}
+
+void generate_diagonal_func(const FragmentsDatabase & fdb, size_t * diag_func) {
+        size_t i = 0;
+        for (const auto & fl : fdb) {
+                double oh = numeric_limits<double>::infinity();
+                if (fl.empty()) {
+                        diag_func[i] = i == 0 ? 0 : diag_func[i - 1];
+                        i++;
+                        continue;
+                }
+                double nh;
+                for (const auto & f : fl) {
+                        nh = f->similarity * f->length;
+                        if (nh < oh) {
+                                diag_func[i] = f->yStart;
+                        }
+                }
+                i++;
+        }
 }

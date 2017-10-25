@@ -136,23 +136,27 @@ FragmentsDatabase::FragmentsDatabase(FILE * frags_file, FILE * lengths_file, seq
         //Divide by size of frag to get the number of fragments
         //Plus one because it might have padding, thus rounding up to bottom and missing 1 struct
         total_frags = 1 + total_frags / sizeof(FragFile);
-        //Allocate memory for all frags
-        loaded_frags = (FragFile *)malloc(total_frags * sizeof(FragFile));
-        if(loaded_frags == nullptr) throw runtime_error("Coult not allocate memory for all fragments");
+        vsize = seq_manager.get_sequence_by_label(0)->len / 10 + 1;
+        loaded_frags = new vector<FragFile*>[vsize];
+        if (loaded_frags == nullptr) throw runtime_error("Could not allocate memory for fragments!");
 
         //Skip headers
         fseeko(frags_file, 16, SEEK_SET);
         //To keep track of current frag
         num_frags = 0;
 
+        FragFile temp_frag;
         while(!feof(frags_file)) {
-                if (!readFragment(&loaded_frags[num_frags], frags_file)) break;
-                if (loaded_frags[num_frags].seqX != 0) continue;
+                if (!readFragment(&temp_frag, frags_file)) break;
+                if (temp_frag.seqX != 0) continue;
+                size_t index = temp_frag.xStart / 10;
+                FragFile * nff = new FragFile(temp_frag);
+                loaded_frags[index].push_back(nff);
                 ++num_frags;
                 if(num_frags > total_frags) throw runtime_error("Unexpected number of fragments");
         }
 }
 
 FragmentsDatabase::~FragmentsDatabase() {
-        free(loaded_frags);
+        delete[] loaded_frags;
 }

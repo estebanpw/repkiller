@@ -104,6 +104,5 @@ void SequenceOcupationList::insert(uint64_t center, uint64_t length, FragsGroup 
         while ((d = deviation(noc, min_idx, length)) < threshold and min_idx > 0) min_idx--;
         // Brute force max index calc
         while ((d = deviation(noc, max_idx, length)) < threshold and max_idx < max_index - 1) max_idx++;
-        cout << "SOL Range: (" << min_idx << ", " << max_idx << ")\n";
         for (size_t i = min_idx / 10; i <= max_idx / 10; i++) ocupations[i]->push_front(noc);
 }

@@ -66,10 +66,19 @@ int main(int argc, char * argv []) {
         cout << "\t# Number of groups: " << efrags_groups.size() << endl;
         cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s" << endl;
 
+        // Generating diagonal function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        cout << "Generating diagonal function for heuristic calculations" << endl;
+        begin = clock();
+        size_t * diag_func = new size_t[frag_db.getA()];
+        generate_diagonal_func(frag_db, diag_func);
+        end = clock();
+        cout << "Diagonal function created succesfully!" << endl;
+        cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s" << endl;
+
         // Sort groups by heuristic value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         cout << "Sorting fragments by heuristic value" << endl;
         begin = clock();
-        sort_groups(efrags_groups);
+        sort_groups(efrags_groups, diag_func);
         end = clock();
         cout << "Fragments groups sorted succesfully!" << endl;
         cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s" << endl;
@@ -81,10 +90,11 @@ int main(int argc, char * argv []) {
                 save_all_frag_pairs(out_file_base_path, seq_manager, efrags_groups);
         } catch (const runtime_error & e) {
                 cout << "Coult not access specified output path " << out_file_base_path << ", saving results into ./repkillerresults.csv" << endl;
-                save_all_frag_pairs("repkillerresults", seq_manager, efrags_groups);
+                save_all_frag_pairs("./repkillerresults.csv", seq_manager, efrags_groups);
         }
         end = clock();
         cout << "Fragments saved into csv file." << endl;
         cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s" << endl;
 
+        delete[] diag_func;
 }
