@@ -3,12 +3,7 @@
 
 #include <inttypes.h>
 #include <iostream>
-#include <list>
 #include <vector>
-#include <set>
-#include <forward_list>
-#include <memory>
-#include <deque>
 
 using namespace std;
 
@@ -84,38 +79,16 @@ typedef vector<FragsGroup*> FGList;
 // Sequence class management
 class sequence_manager
 {
-private:
-Sequence * sequences;       //A pointer to the sequences
-uint64_t n_sequences;       //Number of sequences
-public:
-sequence_manager();
-uint64_t load_sequences_descriptors(FILE * lengths_file);
-Sequence * get_sequence_by_label(uint64_t label) const;
-uint64_t get_maximum_length() const;
-uint64_t get_number_of_sequences() const {
-        return n_sequences;
-}
-void print_sequences_data() const;
-~sequence_manager();
-};
+  private:
+    Sequence * sequences;       //A pointer to the sequences
+    uint64_t n_sequences;       //Number of sequences
 
-struct Ocupation {
-        uint64_t center;
-        uint64_t length;
-        FragsGroup * group;
-        Ocupation(uint64_t center, uint64_t length, FragsGroup * group) : center(center), length(length), group(group) {
-        };
-};
-
-class SequenceOcupationList {
-private:
-double len_pos_ratio, threshold;
-size_t max_index;
-forward_list<Ocupation> ** ocupations;
-const forward_list<Ocupation> * get_suitable_indices(uint64_t center) const;
-double deviation(Ocupation oc, uint64_t center, uint64_t length) const;
-public:
-SequenceOcupationList(double len_pos_ratio, double threshold, uint64_t max_length);
-FragsGroup * get_associated_group(uint64_t center, uint64_t length) const;
-void insert(uint64_t center, uint64_t length, FragsGroup * group);
+  public:
+    sequence_manager();
+    uint64_t load_sequences_descriptors(FILE * lengths_file);
+    Sequence * get_sequence_by_label(uint64_t label) const;
+    uint64_t get_maximum_length() const;
+    uint64_t get_number_of_sequences() const { return n_sequences; }
+    void print_sequences_data() const;
+    ~sequence_manager();
 };
