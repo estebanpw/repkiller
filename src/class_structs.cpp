@@ -6,32 +6,30 @@ sequence_manager::sequence_manager(){
         this->n_sequences = 0;
 }
 
-uint64_t sequence_manager::load_sequences_descriptors(FILE * lengths_file){
+uint64_t sequence_manager::load_sequences_descriptors(ifstream & lengths_file) {
+  //Calculate number of sequences according to size of lengths file
+  lengths_file.seekg(0, ios::end);
+  this->n_sequences = lengths_file.tellg() / sizeof(uint64_t);
+  lengths_file.seekg(0, ios::beg);
 
+  //Allocate heap for sequences struct to hold lengths and ids
+  this->sequences = (Sequence *) malloc(n_sequences*sizeof(Sequence));
 
-        //Calculate number of sequences according to size of lengths file
-        fseeko(lengths_file, 0L, SEEK_END);
-        this->n_sequences = ftello(lengths_file)/sizeof(uint64_t);
-        fseeko(lengths_file, 0L, SEEK_SET);
+  if(this->sequences == nullptr) throw runtime_error("Could not allocate memory for sequences");
 
-        //Allocate heap for sequences struct to hold lengths and ids
-        this->sequences = (Sequence *) malloc(n_sequences*sizeof(Sequence));
+  //Load sequence data into sequences descriptors
+  uint64_t i=0, acum = 0;
+  while(i<this->n_sequences) {
+    this->sequences[i].id = i;
+    this->sequences[i].acum = acum;
+    lengths_file.read((char *) &this->sequences[i].len, sizeof(uint64_t));
+    this->sequences[i].len++;
+    acum += this->sequences[i].len;
+    //fprintf(stdout, "[INFO] Sequence %"PRIu64" has length %"PRIu64"\n", i, st[i].len);
+    i++;
+  }
 
-        if(this->sequences == NULL) throw runtime_error("Could not allocate memory for sequences");
-
-        //Load sequence data into sequences descriptors
-        uint64_t i=0, acum = 0;
-        while(i<this->n_sequences) {
-                this->sequences[i].id = i;
-                this->sequences[i].acum = acum;
-                if(1 != fread(&this->sequences[i].len, sizeof(uint64_t), 1, lengths_file)) throw runtime_error("Wrong number of sequences or sequence file corrupted");
-                this->sequences[i].len = this->sequences[i].len + 1;
-                acum += this->sequences[i].len;
-                //fprintf(stdout, "[INFO] Sequence %"PRIu64" has length %"PRIu64"\n", i, st[i].len);
-                i++;
-        }
-
-        return this->n_sequences;
+  return this->n_sequences;
 }
 
 uint64_t sequence_manager::get_maximum_length() const {

@@ -1,13 +1,12 @@
 #include "commonFunctions.h"
 
-void print_all(){
-        fprintf(stdout, "USAGE:\n");
-        fprintf(stdout, "           ./repkiller <multifrags_path> <output_path> <lengthpos_rel> <pos_ratio>\n");
-        fprintf(stdout, "OPTIONAL:\n");
-        fprintf(stdout, "           --help      Shows the help for program usage\n");
+void print_help(){
+        cout << "Repkiller v0.8.b by Carles Bordas\n";
+        cout << "Usage: ./repkiller <input_file_path> <output_file_path>.csv <length_ratio> <position_ratio>\n";
+        cout << flush;
 }
 
-void init_args(const vector<string> & args, FILE * & multifrags, FILE * & lengths_file, string & out_file_base_path,
+void init_args(const vector<string> & args, ifstream & multifrags, ifstream & lengths_file, ifstream & inf_file, string & out_file_base_path,
                string & path_frags, double & len_pos_ratio, double & pos_ratio){
         out_file_base_path.clear();
         path_frags.clear();
@@ -15,12 +14,16 @@ void init_args(const vector<string> & args, FILE * & multifrags, FILE * & length
         if (args.size() < 4) throw invalid_argument("Invalid number of arguments.");
 
         path_frags = args.at(1);
-        multifrags = fopen64(path_frags.c_str(), "rb");
-        if (multifrags == nullptr) throw runtime_error("Could not open input file " + path_frags + ".");
+        multifrags.open(path_frags, ifstream::in | ifstream::binary);
+        if (not multifrags.good()) throw runtime_error("Could not open input file " + path_frags + ".");
 
         auto path_lengths = path_frags + ".lengths";
-        lengths_file = fopen64(path_lengths.c_str(), "rb");
-        if (lengths_file == nullptr) throw runtime_error("Could not find lengths file " + path_lengths + ".");
+        lengths_file.open(path_lengths, ifstream::in | ifstream::binary);
+        if (not lengths_file.good()) throw runtime_error("Could not find lengths file " + path_lengths + ".");
+
+        auto path_inf = path_frags + ".INF";
+        inf_file.open(path_inf, ifstream::in);
+        if (not inf_file.good()) throw runtime_error("Could not find information file " + path_inf + ".");
 
         out_file_base_path = args.at(2);
         if (out_file_base_path.empty()) throw runtime_error("Output file name is missing");
@@ -45,41 +48,41 @@ size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList & efr
   // Create sequence ocupation lists
   const auto seqxlen = seq_manager.get_sequence_by_label(0)->len;
   const auto seqylen = seq_manager.get_sequence_by_label(1)->len;
-  auto solxf = make_unique<SequenceOcupationList>(lensim, possim, seqxlen);
-  auto solyf = make_unique<SequenceOcupationList>(lensim, possim, seqylen);
-  auto solxr = make_unique<SequenceOcupationList>(lensim, possim, seqxlen);
-  auto solyr = make_unique<SequenceOcupationList>(lensim, possim, seqylen);
+  SequenceOcupationList solxf(lensim, possim, seqxlen);
+  SequenceOcupationList solyf(lensim, possim, seqylen);
+  SequenceOcupationList solxr(lensim, possim, seqxlen);
+  SequenceOcupationList solyr(lensim, possim, seqylen);
   size_t i = 0;
 
   // Iterate over all fragments database and map fragments to groups
-  for (const auto & fl : frags_db) for (const auto f : fl) {
-    auto & solx = f->strand == 'f' ? solxf : solxr;
-    auto & soly = f->strand == 'f' ? solyf : solyr;
+  for (const auto & fl : frags_db) for (const auto & f : fl) {
+    auto & solx = f.strand == 'f' ? solxf : solxr;
+    auto & soly = f.strand == 'f' ? solyf : solyr;
     i++;
     if (not (i % 10000)) print_load(100.0 * i / frags_db.getTotalFrags());
 
-    auto agx = solx->get_associated_group(f->xStart + f->length / 2, f->length);
+    auto agx = solx.get_associated_group(f.xStart + f.length / 2, f.length);
     if (agx != nullptr) {
       // Add to agx and update soly
-      agx->push_back(f);
-      soly->insert(f->yStart + f->length / 2, f->length, agx);
+      agx->push_back(&f);
+      soly.insert(f.yStart + f.length / 2, f.length, agx);
       continue;
     }
 
-    auto agy = soly->get_associated_group(f->yStart + f->length / 2, f->length);
+    auto agy = soly.get_associated_group(f.yStart + f.length / 2, f.length);
     if (agy != nullptr) {
       // Add to agy and update solx
-      agy->push_back(f);
-      solx->insert(f->xStart + f->length / 2, f->length, agy);
+      agy->push_back(&f);
+      solx.insert(f.xStart + f.length / 2, f.length, agy);
       continue;
     }
 
     // Create new group with fragment f, add to solx and soly
     FragsGroup * ngroup = new FragsGroup();
-    ngroup->push_back(f);
+    ngroup->push_back(&f);
     efrags_groups.push_back(ngroup);
-    solx->insert(f->xStart + f->length / 2, f->length, ngroup);
-    soly->insert(f->yStart + f->length / 2, f->length, ngroup);
+    solx.insert(f.xStart + f.length / 2, f.length, ngroup);
+    soly.insert(f.yStart + f.length / 2, f.length, ngroup);
   }
   cout << flush;
   return efrags_groups.size();
@@ -184,9 +187,9 @@ void generate_diagonal_func(const FragmentsDatabase & fdb, size_t * diag_func) {
                 }
                 double nh;
                 for (const auto & f : fl) {
-                        nh = f->length;
+                        nh = f.length;
                         if (nh < oh) {
-                                diag_func[i] = f->yStart;
+                                diag_func[i] = f.yStart;
                         }
                 }
                 i++;

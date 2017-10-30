@@ -7,6 +7,12 @@ SequenceOcupationList::SequenceOcupationList(double len_ratio, double pos_ratio,
     ocupations[i] = new forward_list<Ocupation>();
 }
 
+SequenceOcupationList::~SequenceOcupationList() {
+  for (size_t i = 0; i < max_index + 1; i++)
+    delete ocupations[i];
+  delete[] ocupations;
+}
+
 const forward_list<SequenceOcupationList::Ocupation> * SequenceOcupationList::get_suitable_indices(uint64_t center) const {
   return ocupations[center / DIVISOR];
 }
@@ -37,7 +43,7 @@ FragsGroup * SequenceOcupationList::get_associated_group(uint64_t center, uint64
       }
     }
   }
-  
+
   if (center > 0) {
     auto sind = get_suitable_indices(center - 1);
     for (auto oc : *sind) {
@@ -51,6 +57,28 @@ FragsGroup * SequenceOcupationList::get_associated_group(uint64_t center, uint64
 
   if (center < max_index) {
     auto sind = get_suitable_indices(center + 1);
+    for (auto oc : *sind) {
+      double curr_dev = deviation(oc, center, length);
+      if (curr_dev > d) {
+        d = curr_dev;
+        fg = oc.group;
+      }
+    }
+  }
+
+  if (center > 1) {
+    auto sind = get_suitable_indices(center - 2);
+    for (auto oc : *sind) {
+      double curr_dev = deviation(oc, center, length);
+      if (curr_dev > d) {
+        d = curr_dev;
+        fg = oc.group;
+      }
+    }
+  }
+
+  if (center < max_index - 1) {
+    auto sind = get_suitable_indices(center + 2);
     for (auto oc : *sind) {
       double curr_dev = deviation(oc, center, length);
       if (curr_dev > d) {

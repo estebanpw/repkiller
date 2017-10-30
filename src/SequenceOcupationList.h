@@ -27,6 +27,7 @@ class SequenceOcupationList {
 
   public:
     SequenceOcupationList(double len_pos_ratio, double pos_ratio, uint64_t max_length);
+    ~SequenceOcupationList();
     FragsGroup * get_associated_group(uint64_t center, uint64_t length) const;
     void insert(uint64_t center, uint64_t length, FragsGroup * group);
 };

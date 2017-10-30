@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include <iostream>
+#include <fstream>
 #include <vector>
 
 using namespace std;
@@ -77,15 +78,14 @@ typedef vector<const FragFile*> FragsGroup;
 typedef vector<FragsGroup*> FGList;
 
 // Sequence class management
-class sequence_manager
-{
+class sequence_manager {
   private:
     Sequence * sequences;       //A pointer to the sequences
     uint64_t n_sequences;       //Number of sequences
 
   public:
     sequence_manager();
-    uint64_t load_sequences_descriptors(FILE * lengths_file);
+    uint64_t load_sequences_descriptors(ifstream & lengths_file);
     Sequence * get_sequence_by_label(uint64_t label) const;
     uint64_t get_maximum_length() const;
     uint64_t get_number_of_sequences() const { return n_sequences; }
