@@ -15,15 +15,15 @@ void init_args(const vector<string> & args, ifstream & multifrags, ifstream & le
 
         path_frags = args.at(1);
         multifrags.open(path_frags, ifstream::in | ifstream::binary);
-        if (not multifrags.good()) throw runtime_error("Could not open input file " + path_frags + ".");
+        if (!multifrags) throw runtime_error("Could not open input file " + path_frags + ".");
 
         auto path_lengths = path_frags + ".lengths";
         lengths_file.open(path_lengths, ifstream::in | ifstream::binary);
-        if (not lengths_file.good()) throw runtime_error("Could not find lengths file " + path_lengths + ".");
+        if (!lengths_file) throw runtime_error("Could not find lengths file " + path_lengths + ".");
 
         auto path_inf = path_frags + ".INF";
         inf_file.open(path_inf, ifstream::in);
-        if (not inf_file.good()) throw runtime_error("Could not find information file " + path_inf + ".");
+        if (!inf_file) throw runtime_error("Could not find information file " + path_inf + ".");
 
         out_file_base_path = args.at(2);
         if (out_file_base_path.empty()) throw runtime_error("Output file name is missing");
@@ -88,31 +88,31 @@ size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList & efr
   return efrags_groups.size();
 }
 
-void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len){
-  fprintf(f, "CSV file\n");
-  fprintf(f, "[Jul.15 -- < bitlab - Departamento de Arquitectura de Computadores >\n");
-  fprintf(f, "SeqX filename	: DATA1.dat\n");
-  fprintf(f, "SeqY filename	: DATA2.dat\n");
-  fprintf(f, "SeqX name	: S1\n");
-  fprintf(f, "SeqY name	: S2\n");
-  fprintf(f, "SeqX length	: %" PRIu64 "\n", sx_len);
-  fprintf(f, "SeqY length	: %" PRIu64 "\n", sy_len);
-  fprintf(f, "Min.fragment.length	: 0\n");
-  fprintf(f, "Min.Identity	: 0.0\n");
-  fprintf(f, "Total hits	: 0\n");
-  fprintf(f, "Total hits (used)	: 0\n");
-  fprintf(f, "Total fragments	: 0\n");
-  fprintf(f, "Total CSBs:	: 0\n");
-  fprintf(f, "Frag/CSB,xStart,yStart,xEnd,yEnd,strand,block,length,score,ident,similarity,identity,geneX,geneY\n");
-  fprintf(f, "========================================================\n");
+void write_header(ofstream & f, uint64_t sx_len, uint64_t sy_len) {
+  f << "CSV file\n";
+  f << "[Jul.15 -- < bitlab - Departamento de Arquitectura de Computadores >\n";
+  f << "SeqX filename	: DATA1.dat\n";
+  f << "SeqY filename	: DATA2.dat\n";
+  f << "SeqX name	: S1\n";
+  f << "SeqY name	: S2\n";
+  f << "SeqX length	: " << sx_len << "\n";
+  f << "SeqY length	: " << sy_len << "\n";
+  f << "Min.fragment.length	: 0\n";
+  f << "Min.Identity	: 0.0\n";
+  f << "Total hits	: 0\n";
+  f << "Total hits (used)	: 0\n";
+  f << "Total fragments	: 0\n";
+  f << "Total CSBs:	: 0\n";
+  f << "Frag/CSB,xStart,yStart,xEnd,yEnd,strand,block,length,score,ident,similarity,identity,geneX,geneY\n";
+  f << "========================================================\n";
 }
 
-inline static void store_frag(FILE * out_file, const FragFile * f, uint64_t gid, unsigned repval) {
-  fprintf(out_file, "Frag,%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%c,", f->xStart, f->yStart, f->xEnd, f->yEnd, f->strand);
-  fprintf(out_file, "%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%" PRIu64 ",%.2f,%.2f,0,%d\n", gid, f->length, f->score, f->ident, f->similarity, ((float)f->ident * 100 / (float)f->length), repval);
+inline static void store_frag(ofstream & out_file, const FragFile * f, uint64_t gid, unsigned repval) {
+  out_file << "Frag," << f->xStart << "," << f->yStart << "," << f->xEnd << "," << f->yEnd << "," << f->strand << "," << gid;
+  out_file << "," << f->length << "," << f->score << "," << f->ident << "," << f->similarity << "," << ((float)f->ident * 100 / (float)f->length) << ",0," << repval << "\n";
 }
 
-void save_frags_from_group(FILE * out_file, FragsGroup & fg, uint64_t gid) {
+void save_frags_from_group(ofstream & out_file, FragsGroup & fg, uint64_t gid) {
   if (fg.size() == 1) {
     store_frag(out_file, fg.front(), gid, 0);
   } else {
@@ -123,7 +123,7 @@ void save_frags_from_group(FILE * out_file, FragsGroup & fg, uint64_t gid) {
   }
 }
 
-void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, const sequence_manager & seq_mngr, const FGList &fgl) {
+void save_frag_pair(ofstream & out_file, uint64_t seq1_label, uint64_t seq2_label, const sequence_manager & seq_mngr, const FGList &fgl) {
   Sequence * seq1, * seq2;
 
   uint64_t gid = 0;
@@ -143,55 +143,55 @@ void save_all_frag_pairs(const string & out_file_base_path, const sequence_manag
   uint64_t i, j;
   // Number of sequences involved
   uint64_t n_seq;
-  FILE * out_file;
+  ofstream out_file;
   n_seq = seq_manager.get_number_of_sequences();
   // For each pair of sequences
   for(i=0; i<n_seq; i++) for(j=i+1; j<n_seq; j++) {
     string out_file_name = out_file_base_path;
-    out_file = fopen64(out_file_name.c_str(), "w");
-    if (out_file == nullptr) throw runtime_error("Could not open output directory " + out_file_name);
+    out_file.open(out_file_name, ofstream::out);
+    if (!out_file) throw runtime_error("Could not open output directory " + out_file_name);
     save_frag_pair(out_file, i, j, seq_manager, fgl);
-    fclose(out_file);
+    out_file.close();
   }
 }
 
 void print_load(double percentage) {
-        size_t i;
-        printf("[");
-        for (i = 0; i < percentage / 4; i++) printf("|");
-        for (i = percentage / 4; i < 25; i++) printf(".");
-        printf("] %.2lf%%\r", percentage);
+  size_t i;
+  printf("[");
+  for (i = 0; i < percentage / 4; i++) printf("|");
+  for (i = percentage / 4; i < 25; i++) printf(".");
+  printf("] %.2lf%%\r", percentage);
 }
 
 void sort_groups(FGList & fgl, const size_t * diag_func) {
-        static auto const comp = [&diag_func](const FragFile * a, const FragFile * b){
-                                         size_t ha, hb;
-                                         size_t dx;
-                                         dx = diag_func[a->xStart / 10];
-                                         ha = a->yStart > dx ? a->yStart - dx : dx - a->yStart;
-                                         dx = diag_func[b->xStart / 10];
-                                         hb = b->yStart > dx ? b->yStart - dx : dx - b->yStart;
-                                         return ha < hb;
-                                 };
-        for (auto fg : fgl) if (fg->size() > 1) sort(fg->begin(), fg->end(), comp);
+  static auto const comp = [&diag_func](const FragFile * a, const FragFile * b){
+                                   size_t ha, hb;
+                                   size_t dx;
+                                   dx = diag_func[a->xStart / 10];
+                                   ha = a->yStart > dx ? a->yStart - dx : dx - a->yStart;
+                                   dx = diag_func[b->xStart / 10];
+                                   hb = b->yStart > dx ? b->yStart - dx : dx - b->yStart;
+                                   return ha < hb;
+                           };
+  for (auto fg : fgl) if (fg->size() > 1) sort(fg->begin(), fg->end(), comp);
 }
 
 void generate_diagonal_func(const FragmentsDatabase & fdb, size_t * diag_func) {
-        size_t i = 0;
-        for (const auto & fl : fdb) {
-                double oh = numeric_limits<double>::infinity();
-                if (fl.empty()) {
-                        diag_func[i] = i == 0 ? 0 : diag_func[i - 1];
-                        i++;
-                        continue;
-                }
-                double nh;
-                for (const auto & f : fl) {
-                        nh = f.length;
-                        if (nh < oh) {
-                                diag_func[i] = f.yStart;
-                        }
-                }
-                i++;
-        }
+  size_t i = 0;
+  for (const auto & fl : fdb) {
+    double oh = numeric_limits<double>::infinity();
+    if (fl.empty()) {
+      diag_func[i] = i == 0 ? 0 : diag_func[i - 1];
+      i++;
+      continue;
+    }
+    double nh;
+    for (const auto & f : fl) {
+      nh = f.length;
+      if (nh < oh) {
+              diag_func[i] = f.yStart;
+      }
+    }
+    i++;
+  }
 }

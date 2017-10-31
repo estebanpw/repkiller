@@ -18,12 +18,12 @@ using namespace std;
 int main(int argc, char * argv []) {
   string out_file_base_path, multifrags_path;
   double len_pos_ratio, pos_ratio;
-  vector<string> args(argc);
-  args.assign(argv, argv + argc);
 
   // Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%
   ifstream frags_file, lengths_file, inf_file;
   try {
+    vector<string> args(argc);
+    args.assign(argv, argv + argc);
     init_args(args, frags_file, lengths_file, inf_file, out_file_base_path, multifrags_path, len_pos_ratio, pos_ratio);
   } catch (const invalid_argument & e) {
     cerr << e.what() << endl;
@@ -93,12 +93,12 @@ int main(int argc, char * argv []) {
   try {
     save_all_frag_pairs(out_file_base_path, seq_manager, efrags_groups);
   } catch (const runtime_error & e) {
-    cout << "Coult not access specified output path " << out_file_base_path << ", saving results into ./repkillerresults.csv\n" << flush;
-    save_all_frag_pairs("./repkillerresults.csv", seq_manager, efrags_groups);
+    cout << "Couldn't access " << out_file_base_path << ", saving results into ./repkiller_results.csv\n" << flush;
+    save_all_frag_pairs("./repkiller_results.csv", seq_manager, efrags_groups);
   }
   end = clock();
   cout << "Fragments saved into csv file.\n";
   cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s\n" << flush;
 
-  for (auto fg : efrags_groups) delete fg; 
+  for (auto fg : efrags_groups) delete fg;
 }

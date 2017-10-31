@@ -10,10 +10,7 @@ ostream & operator<<(ostream & os, const FragFile & f) {
 
 
 void endianessConversion(char * data, size_t n) {
-  size_t i, j;
-  for (i = 0, j = n - 1; i < n / 2; i++, j--) {
-    swap(data[i], data[j]);
-  }
+  reverse(data, data + n);
 }
 
 
@@ -65,8 +62,8 @@ FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, ifstream & lengths_f
   //Plus one because it might have padding, thus rounding up to bottom and missing 1 struct
   total_frags = 1 + total_frags / sizeof(FragFile);
   vsize = 1 + seq_manager.get_sequence_by_label(0)->len / 10;
-  loaded_frags = new vector<FragFile>[vsize];
-  if (loaded_frags == nullptr) throw runtime_error("Could not allocate memory for fragments!");
+  loaded_frags = unique_ptr<vector<FragFile>[]>(new vector<FragFile>[vsize]);
+  if (!loaded_frags) throw runtime_error("Could not allocate memory for fragments!");
 
   //To keep track of current frag
   frags_count = 0;
@@ -80,8 +77,4 @@ FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, ifstream & lengths_f
     ++frags_count;
     if(frags_count > total_frags) throw runtime_error("Unexpected number of fragments");
   }
-}
-
-FragmentsDatabase::~FragmentsDatabase() {
-  delete[] loaded_frags;
 }

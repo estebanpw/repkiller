@@ -36,17 +36,17 @@ size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList & efr
 /*
    Prints the standard csv header
  */
-void write_header(FILE * f, uint64_t sx_len, uint64_t sy_len);
+void write_header(ofstream & f, uint64_t sx_len, uint64_t sy_len);
 
 /*
    TODO desc
  */
-void save_frags_from_group(FILE * out_file, FragsGroup & fg, uint64_t gid);
+void save_frags_from_group(ofstream & out_file, FragsGroup & fg, uint64_t gid);
 
 /*
    TODO desc
  */
-void save_frag_pair(FILE * out_file, uint64_t seq1_label, uint64_t seq2_label, const sequence_manager & seq_mngr, const FGList & fgl);
+void save_frag_pair(ofstream & out_file, uint64_t seq1_label, uint64_t seq2_label, const sequence_manager & seq_mngr, const FGList & fgl);
 
 /*
    TODO desc
