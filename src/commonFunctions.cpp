@@ -1,13 +1,13 @@
 #include "commonFunctions.h"
 
 void print_help(){
-        cout << "Repkiller v0.8.b by Carles Bordas\n";
+        cout << "Repkiller v0.9.a by Carles Bordas\n";
         cout << "Usage: ./repkiller <input_file_path> <output_file_path>.csv <length_ratio> <position_ratio>\n";
         cout << flush;
 }
 
 void init_args(const vector<string> & args, ifstream & multifrags, ifstream & lengths_file, ifstream & inf_file, string & out_file_base_path,
-               string & path_frags, double & len_pos_ratio, double & pos_ratio){
+               string & path_frags, queue<pair<double, double>> & params){
         out_file_base_path.clear();
         path_frags.clear();
 
@@ -28,11 +28,13 @@ void init_args(const vector<string> & args, ifstream & multifrags, ifstream & le
         out_file_base_path = args.at(2);
         if (out_file_base_path.empty()) throw runtime_error("Output file name is missing");
 
-        len_pos_ratio = stod(args.at(3), nullptr);
-        if (len_pos_ratio <= 0) throw invalid_argument("Ratio between length and position must be greater than zero");
-
-        pos_ratio = stod(args.at(4), nullptr);
-        if (pos_ratio <= 0) throw invalid_argument("Position proximity must be greater than zero");
+        for (size_t i = 3; i < args.size(); i += 2) {
+          double len_ratio = stod(args.at(i),     nullptr);
+          double pos_ratio = stod(args.at(i + 1), nullptr);
+          if (len_ratio <= 0) throw invalid_argument("Ratio between length and position must be greater than zero");
+          if (pos_ratio <= 0) throw invalid_argument("Position proximity must be greater than zero");
+          params.push(make_pair(len_ratio, pos_ratio));
+        }
 }
 
 void terror(const char *s) {
@@ -52,14 +54,11 @@ size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList & efr
   SequenceOcupationList solyf(lensim, possim, seqylen);
   SequenceOcupationList solxr(lensim, possim, seqxlen);
   SequenceOcupationList solyr(lensim, possim, seqylen);
-  size_t i = 0;
 
   // Iterate over all fragments database and map fragments to groups
   for (const auto & fl : frags_db) for (const auto & f : fl) {
     auto & solx = f.strand == 'f' ? solxf : solxr;
     auto & soly = f.strand == 'f' ? solyf : solyr;
-    i++;
-    if (not (i % 10000)) print_load(100.0 * i / frags_db.getTotalFrags());
 
     auto agx = solx.get_associated_group(f.xStart + f.length / 2, f.length);
     if (agx != nullptr) {
@@ -155,16 +154,8 @@ void save_all_frag_pairs(const string & out_file_base_path, const sequence_manag
   }
 }
 
-void print_load(double percentage) {
-  size_t i;
-  printf("[");
-  for (i = 0; i < percentage / 4; i++) printf("|");
-  for (i = percentage / 4; i < 25; i++) printf(".");
-  printf("] %.2lf%%\r", percentage);
-}
-
 void sort_groups(FGList & fgl, const size_t * diag_func) {
-  static auto const comp = [&diag_func](const FragFile * a, const FragFile * b){
+  auto comp = [&diag_func](const FragFile * a, const FragFile * b){
                                    size_t ha, hb;
                                    size_t dx;
                                    dx = diag_func[a->xStart / 10];

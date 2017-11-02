@@ -2,103 +2,96 @@
 
 #include <iostream>
 #include <fstream>
-#include <stdio.h>
 #include <cstdlib>
 #include <string>
-#include <ctype.h>
-#include <float.h>
 #include <thread>
+#include <utility>
+#include <queue>
 
 #include "FragmentsDatabase.h"
 #include "structs.h"
 #include "commonFunctions.h"
+#include "SaverQueue.h"
+
+#define MAX_THREADS 3
+#if MAX_THREADS <= 0
+  #error "MAX THREADS MUST BE GREATER THAN ZERO"
+#endif
 
 using namespace std;
 
+void execWithParams(const FragmentsDatabase & frag_db, pair<double, double> param,
+  const sequence_manager & seq_manager, const string & out_file_base_path, SaverQueue & sq);
+
 int main(int argc, char * argv []) {
   string out_file_base_path, multifrags_path;
-  double len_pos_ratio, pos_ratio;
+  queue<pair<double, double>> params;
 
   // Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%
   ifstream frags_file, lengths_file, inf_file;
   try {
     vector<string> args(argc);
     args.assign(argv, argv + argc);
-    init_args(args, frags_file, lengths_file, inf_file, out_file_base_path, multifrags_path, len_pos_ratio, pos_ratio);
+    init_args(args, frags_file, lengths_file, inf_file, out_file_base_path, multifrags_path, params);
   } catch (const invalid_argument & e) {
     cerr << e.what() << endl;
     print_help();
     exit(1);
   }
 
-  cout << "--- Running REPKILLER v0.8.b by Carles Bordas ---\n"
+  // Printing the header of the program
+  cout << "--- Running REPKILLER v0.9.a by Carles Bordas ---\n"
           "     Bitlab - Arquitectura de Computadores\n"
           "           Universidad de Málaga 2017\n"
           "\n" << flush;
 
-  // Clocks to measure time
-  clock_t begin, end;
-  double elapsed;
   // The sequences manager to store ids, lengths, etc
   sequence_manager seq_manager;
 
   // Load fragments into array %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  cout << "Loading fragments into memory...\n";
-  cout << flush;
-  begin = clock();
   FragmentsDatabase frag_db(frags_file, lengths_file, seq_manager);
-  end = clock();
-  elapsed = (double)(end - begin) / CLOCKS_PER_SEC;
-  cout << "Fragments loaded into memory succesfully!\n";
-  cout << "\t# Total fragments loaded: " << frag_db.getTotalFrags() << "\n";
-  cout << "\t# Elapsed time: " << elapsed << "s\n";
-  cout << flush;
   frags_file.close();
   lengths_file.close();
   inf_file.close();
 
+  SaverQueue sq(seq_manager);
+  sq.start();
+
+  std::vector<std::thread> threads;
+  std::mutex mtx;
+  for (size_t i = 0; i < MAX_THREADS; ++i) {
+    threads.emplace_back([&] {
+      while (true) {
+        std::unique_lock<std::mutex> lck(mtx);
+        if (params.empty()) return;
+        auto param = params.front(); params.pop();
+        lck.unlock();
+        execWithParams(frag_db, param, seq_manager, out_file_base_path, sq);
+      }
+    });
+  }
+
+  for (auto & thread : threads) thread.join();
+  sq.stop();
+
+  cout << "Repkiller finished with no errors\n";
+}
+
+void execWithParams(const FragmentsDatabase & frag_db, pair<double, double> param,
+  const sequence_manager & seq_manager, const string & out_file_base_path, SaverQueue & sq) {
   // Generate fragment groups %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  cout << "Generating fragment groups... (this might take a while)\n";
-  cout << flush;
-  begin = clock();
-  FGList efrags_groups;
-  (void) generate_fragment_groups(frag_db, efrags_groups, seq_manager, len_pos_ratio, pos_ratio);
-  end = clock();
-  cout << "Groups created succesfully!\n";
-  cout << "\t# Number of groups: " << efrags_groups.size() << "\n";
-  cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s\n";
-  cout << flush;
+  FGList * efrags_groups = new FGList;
+  (void) generate_fragment_groups(frag_db, *efrags_groups, seq_manager, param.first, param.second);
 
   // Generating diagonal function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  cout << "Generating diagonal function for heuristic calculations\n" << flush;
-  begin = clock();
-  unique_ptr<size_t[]> diag_func(new size_t[frag_db.getA()]);
-  generate_diagonal_func(frag_db, diag_func.get());
-  end = clock();
-  cout << "Diagonal function created succesfully!\n";
-  cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s\n" << flush;
+  size_t * diag_func = new size_t[frag_db.getA()];
+  generate_diagonal_func(frag_db, diag_func);
 
   // Sort groups by heuristic value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  cout << "Sorting fragments by heuristic value\n" << flush;
-  begin = clock();
-  sort_groups(efrags_groups, diag_func.get());
-  end = clock();
-  cout << "Fragments groups sorted succesfully!\n";
-  cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s\n" << flush;
+  sort_groups(*efrags_groups, diag_func);
+  delete[] diag_func;
 
   // Save results in file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  cout << "Saving results into secondary memory...\n";
-  cout << flush;
-  begin = clock();
-  try {
-    save_all_frag_pairs(out_file_base_path, seq_manager, efrags_groups);
-  } catch (const runtime_error & e) {
-    cout << "Couldn't access " << out_file_base_path << ", saving results into ./repkiller_results.csv\n" << flush;
-    save_all_frag_pairs("./repkiller_results.csv", seq_manager, efrags_groups);
-  }
-  end = clock();
-  cout << "Fragments saved into csv file.\n";
-  cout << "\t# Elapsed time: " << ((double)(end - begin) / CLOCKS_PER_SEC) << " s\n" << flush;
-
-  for (auto fg : efrags_groups) delete fg;
+  auto out_file_path = out_file_base_path + "-" + std::to_string(param.first) + "-" + std::to_string(param.second) + ".csv";
+  sq.addRequest(out_file_path, efrags_groups);
 }

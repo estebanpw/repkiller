@@ -18,7 +18,7 @@ private:
   uint64_t frags_count = 0;
 public:
   FragmentsDatabase(ifstream & frags_file, ifstream & lengths_file, sequence_manager & seq_manager);
-  auto getA() {
+  auto getA() const{
     return vsize;
   }
   auto begin() const {
