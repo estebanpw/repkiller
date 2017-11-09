@@ -9,25 +9,19 @@
 
 #include "structs.h"
 
+#define DIV 60000
+
 using namespace std;
 
 class FragmentsDatabase {
 private:
-  unique_ptr<vector<FragFile>[]> loaded_frags;
-  size_t vsize;
   uint64_t frags_count = 0;
 public:
-  FragmentsDatabase(ifstream & frags_file, ifstream & lengths_file, sequence_manager & seq_manager);
-  auto getA() const{
-    return vsize;
-  }
-  auto begin() const {
-    return loaded_frags.get();
-  };
-  auto end() const {
-    return loaded_frags.get() + vsize - 1;
-  };
-  uint64_t getTotalFrags() const {
-    return frags_count;
-  }
+  vector<FragFile> ** loaded_frags;
+  size_t nc, nr;
+  FragmentsDatabase(ifstream & frags_file, ifstream & lengths_file, sequence_manager & seq_manager, uint64_t threshold);
+  ~FragmentsDatabase();
+  inline void add(FragFile f) { loaded_frags[f.xStart / DIV][f.yStart / DIV].push_back(f); frags_count++; }
+  uint64_t getTotalFrags() const { return frags_count; }
+
 };

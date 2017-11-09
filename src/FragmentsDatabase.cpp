@@ -50,9 +50,7 @@ bool readFragment(FragFile * frag, ifstream & f) {
 }
 
 
-FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, ifstream & lengths_file, sequence_manager & seq_manager) {
-  (void) seq_manager.load_sequences_descriptors(lengths_file);
-
+FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, ifstream & lengths_file, sequence_manager & seq_manager, uint64_t threshold) {
   //Compute number of fragments in file
   frags_file.seekg(0, ios::end);
   uint64_t total_frags = frags_file.tellg();
@@ -61,9 +59,15 @@ FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, ifstream & lengths_f
   //Divide by size of frag to get the number of fragments
   //Plus one because it might have padding, thus rounding up to bottom and missing 1 struct
   total_frags = 1 + total_frags / sizeof(FragFile);
-  vsize = 1 + seq_manager.get_sequence_by_label(0)->len / 10;
-  loaded_frags = unique_ptr<vector<FragFile>[]>(new vector<FragFile>[vsize]);
+  nc = 1 + seq_manager.get_sequence_by_label(0).len / DIV;
+  nr = 1 + seq_manager.get_sequence_by_label(1).len / DIV;
+
+  loaded_frags = new vector<FragFile>*[nr];
   if (!loaded_frags) throw runtime_error("Could not allocate memory for fragments!");
+  for (size_t i = 0; i < nc; i++) {
+    loaded_frags[i] = new vector<FragFile>[nr];
+    if (!loaded_frags[i]) throw runtime_error("Could not allocate memory for fragments!");
+  }
 
   //To keep track of current frag
   frags_count = 0;
@@ -71,10 +75,20 @@ FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, ifstream & lengths_f
   FragFile temp_frag;
   while(!frags_file.eof()) {
     if (!readFragment(&temp_frag, frags_file)) break;
-    if (temp_frag.seqX != 0) continue;
-    size_t index = temp_frag.xStart / 10;
-    loaded_frags[index].push_back(temp_frag);
-    ++frags_count;
+    if (temp_frag.seqX != 0 or temp_frag.strand == 'r') continue;
+    this->add(temp_frag);
     if(frags_count > total_frags) throw runtime_error("Unexpected number of fragments");
   }
+  // Sort each cell of table by length of fragments
+  for (size_t i = 0; i < nc; i++) {
+    for (size_t j = 0; j < nr; j++) {
+      auto comp = [](const FragFile & f1, const FragFile & f2){ return f1.length > f2.length; };
+      std::sort(loaded_frags[i][j].begin(), loaded_frags[i][j].end(), comp);
+    }
+  }
+}
+
+FragmentsDatabase::~FragmentsDatabase() {
+  //for (size_t i = 0; i < nc; i++) delete[] loaded_frags[i];
+  //delete[] loaded_frags;
 }
