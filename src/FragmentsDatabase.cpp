@@ -49,6 +49,7 @@ bool readFragment(FragFile * frag, const string & line) {
 
 }
 
+string final_read_header;
 
 FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, sequence_manager & seq_manager) {
   string line;
@@ -75,7 +76,7 @@ FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, sequence_manager & s
     header.append(line).append("\n");
   }
 
-  read_header = header;
+  seq_manager.read_header(header);
 
 
   //Divide by size of frag to get the number of fragments

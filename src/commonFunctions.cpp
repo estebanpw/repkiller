@@ -115,13 +115,13 @@ void save_frags_from_group(ofstream & out_file, FragsGroup & fg, uint64_t gid) {
 }
 
 void save_frag_pair(ofstream & out_file, uint64_t seq1_label, uint64_t seq2_label, const sequence_manager & seq_mngr, const FGList &fgl) {
-  const Sequence & seq1 = seq_mngr.get_sequence_by_label(seq1_label), & seq2 = seq_mngr.get_sequence_by_label(seq2_label);
+  //const Sequence & seq1 = seq_mngr.get_sequence_by_label(seq1_label), & seq2 = seq_mngr.get_sequence_by_label(seq2_label);
 
   uint64_t gid = 0;
   //int repetitions;
 
   //write_header(out_file, seq1.len, seq2.len);
-  out_file << read_header;
+  seq_mngr.write_header(out_file);
 
   for (auto fg : fgl) {
     save_frags_from_group(out_file, *fg, gid++);

@@ -74,7 +74,6 @@ typedef struct sequence {
 
 typedef vector<const FragFile*> FragsGroup;
 typedef vector<FragsGroup*> FGList;
-string read_header;
 
 // Sequence class management
 class sequence_manager {
@@ -83,7 +82,7 @@ class sequence_manager {
     string header;
   public:
     vector<Sequence> sequences;
-    void read_header(ifstream & frags_file);
+    void read_header(string input_header);
     const void write_header(ofstream & out_file) const;
     const Sequence & get_sequence_by_label(uint64_t label) const;
     uint64_t get_maximum_length() const;

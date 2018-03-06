@@ -1,18 +1,12 @@
 #include "structs.h"
 
-void sequence_manager::read_header(ifstream & frags_file) {
+void sequence_manager::read_header(string input_header) {
         //Allocate heap for sequences struct to hold lengths and ids
-        int num_lines = 0;
-        string line;
-        while(getline(frags_file, line) && num_lines < 16){
-                header += line;
-                num_lines++;
-        }
+       header = input_header;
 }
 
-// FIX
 const void sequence_manager::write_header(ofstream & out_file) const {
-        // Write headers to output
+        // Write headers to output file
         out_file << header;
 }
 

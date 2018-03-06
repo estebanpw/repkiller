@@ -52,7 +52,6 @@ int main(int argc, char * argv []) {
   FragmentsDatabase frag_db(frags_file, seq_manager);
 
   // Read header
-  seq_manager.read_header(frags_file);
   frags_file.close();
 
   SaverQueue sq(seq_manager);
