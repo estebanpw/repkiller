@@ -10,7 +10,6 @@
 
 #include "structs.h"
 
-
 using namespace std;
 
 class FragmentsDatabase {
