@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <fstream>
 #include <queue>
-#include <set>
-#include <future>
 
 #include "structs.h"
 #include "FragmentsDatabase.h"
@@ -15,9 +13,8 @@ using namespace std;
 
 void print_help();
 
-void init_args(const vector<string> & args, ifstream & multifrags, ifstream & lengths_file,
-  ifstream & inf_file, ifstream & fasta_file_0, ifstream & fasta_file_1, string & out_file_base_path, string & path_frags,
-  queue<pair<double, double>> & params);
+void init_args(const vector<string> & args, ifstream & multifrags, string & out_file_base_path,
+               string & path_frags, queue<pair<double, double>> & params);
 /**
  * Print the error message 's' and exit(-1)
  */
@@ -59,8 +56,4 @@ void save_all_frag_pairs(const string & out_file_base_path, const sequence_manag
 
 void sort_groups(FGList & fgl, const size_t * diag_func);
 
-//void generate_diagonal_func(const FragmentsDatabase & fdb, size_t * diag_func);
-
-void generateSubfragments(FragmentsDatabase & fdb, uint64_t threshold, const sequence_manager & seq_mngr);
-
-void divideGroups(FGList & fgl, double threshold);
+void generate_diagonal_func(const FragmentsDatabase & fdb, size_t * diag_func);

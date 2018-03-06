@@ -8,7 +8,7 @@
 
 #include "structs.h"
 
-#define DIVISOR 20000
+#define DIVISOR 100
 
 class SequenceOcupationList {
   private:

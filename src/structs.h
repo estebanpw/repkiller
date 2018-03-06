@@ -1,14 +1,10 @@
 #pragma once
 #pragma pack(1)
 
-#include <inttypes.h>
 #include <iostream>
-#include <fstream>
+#include <inttypes.h>
 #include <vector>
-#include <utility>
-#include <limits>
-#include <array>
-#include <algorithm>
+#include <fstream>
 
 using namespace std;
 
@@ -56,12 +52,9 @@ struct FragFile {
 
 //Sequence descriptor
 typedef struct sequence {
+        sequence(uint64_t id, uint64_t len) : id(id), len(len) {}
         uint64_t id; //Label of the sequence
         uint64_t len; //Length in nucleotides of the sequence
-        uint64_t acum; //Accumulated length from the sequences found before in the file (if any)
-        uint32_t coverage; //The percentage of bases covered by fragments of a minimum length
-        uint64_t n_frags; //Number of fragments that the sequence had
-        std::string nucleotides;
 } Sequence;
 
 /*
@@ -85,15 +78,14 @@ typedef vector<FragsGroup*> FGList;
 // Sequence class management
 class sequence_manager {
   private:
-    std::array<Sequence, 2> sequences;
-    std::string getBasesAt(size_t seq_id, uint64_t start, uint64_t end) const;
+    uint64_t total_frags;
+    string header;
   public:
-    uint64_t load_sequences_descriptors(ifstream & lengths_file);
-    void loadSequence(size_t index, std::ifstream & ifile);
-    std::pair<std::string, std::string> getSequencePair(const FragFile & f) const;
-    std::string getBasesFromFrag(size_t seq_id, const FragFile & f) const;
+    vector<Sequence> sequences;
+    void read_header(string input_header);
+    const void write_header(ofstream & out_file) const;
     const Sequence & get_sequence_by_label(uint64_t label) const;
     uint64_t get_maximum_length() const;
+    uint64_t getTotalFrags() const { return total_frags; }
     uint64_t get_number_of_sequences() const { return sequences.size(); }
-    void print_sequences_data() const;
 };
