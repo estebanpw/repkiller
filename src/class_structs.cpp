@@ -5,9 +5,8 @@ void sequence_manager::read_header(string input_header) {
         header = input_header;
 }
 
-// FIX
 const void sequence_manager::write_header(ofstream & out_file) const {
-        // Write headers to output
+        // Write headers to output file
         out_file << header;
 }
 

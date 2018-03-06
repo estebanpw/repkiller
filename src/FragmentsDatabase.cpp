@@ -49,6 +49,7 @@ bool readFragment(FragFile * frag, const string & line) {
 
 }
 
+string final_read_header;
 
 FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, sequence_manager & seq_manager) {
   string line;
