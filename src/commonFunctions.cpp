@@ -51,7 +51,7 @@ size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList & efr
   for (const auto & fl : frags_db) for (const auto & f : fl) {
     auto & solx = f.strand == 'f' ? solxf : solxr;
     auto & soly = f.strand == 'f' ? solyf : solyr;
-
+//cout << "-fStrand: " << f.strand << "\nfX: " << f.xStart << "\nfY: " << f.yStart << "\nfLen: " << f.length << "\n";
     auto agx = solx.get_associated_group(f.xStart + f.length / 2, f.length);
     if (agx != nullptr) {
       // Add to agx and update soly
@@ -79,6 +79,7 @@ size_t generate_fragment_groups(const FragmentsDatabase & frags_db, FGList & efr
   return efrags_groups.size();
 }
 
+// Deprecated
 void write_header(ofstream & f, uint64_t sx_len, uint64_t sy_len) {
   f << "CSV file\n";
   f << "[Jul.15 -- < bitlab - Departamento de Arquitectura de Computadores >\n";

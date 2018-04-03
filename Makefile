@@ -1,6 +1,6 @@
 CC=gcc
 CXX=g++ -std=c++14
-CFLAGS=-g -O3 -Wall
+CFLAGS=-g -O3 -D_FILE_OFFSET_BITS=64 -Wall
 SRC=src
 BIN=bin
 

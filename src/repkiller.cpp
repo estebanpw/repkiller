@@ -82,15 +82,12 @@ void execWithParams(const FragmentsDatabase & frag_db, pair<double, double> para
   // Generate fragment groups %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   FGList * efrags_groups = new FGList;
   (void) generate_fragment_groups(frag_db, *efrags_groups, seq_manager, param.first, param.second);
-
   // Generating diagonal function %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   size_t * diag_func = new size_t[frag_db.getA()];
   generate_diagonal_func(frag_db, diag_func);
-
   // Sort groups by heuristic value %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   sort_groups(*efrags_groups, diag_func);
   delete[] diag_func;
-
   // Save results in file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   auto out_file_path = out_file_base_path;
   sq.addRequest(out_file_path, efrags_groups);

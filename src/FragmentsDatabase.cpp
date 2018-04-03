@@ -71,7 +71,7 @@ FragmentsDatabase::FragmentsDatabase(ifstream & frags_file, sequence_manager & s
 
   uint64_t total_frags = atoll(line.substr(line.find(':') + 1).c_str());
 
-  for (size_t i = 0; i < 3; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     getline(frags_file, line);
     header.append(line).append("\n");
   }
