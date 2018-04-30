@@ -1651,3 +1651,11 @@ void print_memory_usage(){
     //fprintf(stdout, "[INFO] Current RAM usage: %"PRIu64" (MB)\n", total_bytes_in_use/(1024*1024));
     fprintf(stdout, "[INFO] Current RAM usage: %"PRIu64" bytes, which are %"PRIu64" Megabytes. \n", total_bytes_in_use, total_bytes_in_use/(1024*1024));
 }
+
+uint64_t get_synteny_block_size(Synteny_block *pointer_sb) {
+    uint64_t ans = 0;
+    while (pointer_sb->next != NULL) {
+        ans++;
+    }
+    return ans;
+}

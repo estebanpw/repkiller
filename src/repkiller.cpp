@@ -19,6 +19,8 @@ void print_all();
 void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size,
     FILE ** trim_frags_file, bool * trim_frags_file_write);
+void repetitions_detector(Synteny_list * synteny_block_list);
+
 int main(int ac, char **av) {
     
     
@@ -154,15 +156,14 @@ int main(int ac, char **av) {
     print_memory_usage();
     fprintf(stdout, "[INFO] Insertion of fragments into hash table completed. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
      
-    
-    
     //Generate synteny blocks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
     Synteny_list * synteny_block_list = compute_synteny_list(ht, n_files, mp, &last_s_id);
     //traverse_synteny_list_and_write(synteny_block_list, n_files, "init");
     traverse_synteny_list(synteny_block_list);
 
-    //Put repetition detector function here 
+    //Put repetition detector function here
+    repetitions_detector(synteny_block_list);
 
     end = clock();
     print_memory_usage();
@@ -284,6 +285,63 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     if(*multifrags==NULL || *out_file==NULL || path_frags[0] == '\0'){
         print_all();
         terror("A frags file and an output file must be specified");
+    }
+}
+
+void repetitions_detector(Synteny_list * synteny_block_list) {
+    // crear estructura para guardar id y contador (avl?) tamaño: tamaño de synteny block
+    // recorrer todo el bloque e ir sumando si encuentro genoma con misma id
+    // si aparece una repetición, escribir bloque a fichero
+
+    // punteros para recorrer estructuras/variables
+    Synteny_list * pointer_sbl = synteny_block_list;
+    Synteny_block * pointer_sb;
+
+    // flag para salir del while / cambiar por break?
+    bool advance = true;
+
+    uint64_t index = 0;
+    uint64_t id;
+    uint64_t i;
+    uint64_t synteny_block_size;
+        
+    bool found = false;
+
+    while(pointer_sbl != NULL){
+        advance = true;
+        pointer_sb = pointer_sbl->sb;
+        synteny_block_size = get_synteny_block_size(pointer_sb);
+
+        // Matriz para guardar sequence ids y números de repeticiones
+        uint64_t id_repetitions_matrix[synteny_block_size][2];
+        for (i = 0; i < synteny_block_size; i++) {
+            id_repetitions_matrix[i][1] = 0;
+        }
+
+        while(pointer_sb != NULL && advance){
+            // cojo id del current block
+            id = pointer_sb->b->genome->id;
+            index = 0;
+            // compruebo si ya está en la matrix
+            // usar synteny_level
+            while (!found && id_repetitions_matrix[index][1] != 0 && index < synteny_block_size) {
+                found = id_repetitions_matrix[index][0] == id;
+                index++;
+            }
+            found = false;
+            id_repetitions_matrix[index-1][0] = id;
+            id_repetitions_matrix[index-1][1]++;
+            if (id_repetitions_matrix[index-1][1] > 1) {
+                advance = false;
+                // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                printf("Repetition detected:\n");
+                printSyntenyBlock(pointer_sb);
+                getchar();
+                // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            }
+            pointer_sb = pointer_sb->next;
+        }
+        pointer_sbl = pointer_sbl->next;
     }
 }
 

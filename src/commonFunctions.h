@@ -186,4 +186,6 @@ long double median_from_vector(uint64_t * v, uint64_t l);
 */
 void print_memory_usage();
 
+uint64_t get_synteny_block_size(Synteny_block *pointer_sb);
+
 #endif /* COMMON_FUNCTIONS_H */
