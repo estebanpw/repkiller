@@ -161,9 +161,11 @@ int main(int ac, char **av) {
     Synteny_list * synteny_block_list = compute_synteny_list(ht, n_files, mp, &last_s_id);
     //traverse_synteny_list_and_write(synteny_block_list, n_files, "init");
     traverse_synteny_list(synteny_block_list);
+    printf("End of traverse_synteny_list\n");
 
     //Put repetition detector function here
     repetitions_detector(synteny_block_list);
+    printf("End of repetitions_detector\n");
 
     end = clock();
     print_memory_usage();
@@ -289,46 +291,32 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
 }
 
 void repetitions_detector(Synteny_list * synteny_block_list) {
-    // crear estructura para guardar id y contador (avl?) tamaño: tamaño de synteny block
-    // recorrer todo el bloque e ir sumando si encuentro genoma con misma id
-    // si aparece una repetición, escribir bloque a fichero
-
-    // punteros para recorrer estructuras/variables
     Synteny_list * pointer_sbl = synteny_block_list;
     Synteny_block * pointer_sb;
-
-    // flag para salir del while / cambiar por break?
     bool advance = true;
-
+    bool found = false;
     uint64_t index = 0;
     uint64_t id;
     uint64_t i;
     uint64_t synteny_block_size;
-        
-    bool found = false;
 
     while(pointer_sbl != NULL){
         advance = true;
         pointer_sb = pointer_sbl->sb;
         synteny_block_size = get_synteny_block_size(pointer_sb);
 
-        // Matriz para guardar sequence ids y números de repeticiones
         uint64_t id_repetitions_matrix[synteny_block_size][2];
         for (i = 0; i < synteny_block_size; i++) {
             id_repetitions_matrix[i][1] = 0;
         }
 
         while(pointer_sb != NULL && advance){
-            // cojo id del current block
             id = pointer_sb->b->genome->id;
             index = 0;
-            // compruebo si ya está en la matrix
-            // usar synteny_level
             while (!found && id_repetitions_matrix[index][1] != 0 && index < synteny_block_size) {
                 found = id_repetitions_matrix[index][0] == id;
                 index++;
             }
-            found = false;
             id_repetitions_matrix[index-1][0] = id;
             id_repetitions_matrix[index-1][1]++;
             if (id_repetitions_matrix[index-1][1] > 1) {
@@ -339,6 +327,7 @@ void repetitions_detector(Synteny_list * synteny_block_list) {
                 getchar();
                 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             }
+            found = false;
             pointer_sb = pointer_sb->next;
         }
         pointer_sbl = pointer_sbl->next;

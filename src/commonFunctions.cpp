@@ -1656,6 +1656,7 @@ uint64_t get_synteny_block_size(Synteny_block *pointer_sb) {
     uint64_t ans = 0;
     while (pointer_sb->next != NULL) {
         ans++;
+        pointer_sb = pointer_sb->next;
     }
     return ans;
 }
