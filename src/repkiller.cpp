@@ -17,12 +17,12 @@ int HARD_DEBUG_ACTIVE = 0;
 
 void print_all();
 void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
-    uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size,
-    FILE ** trim_frags_file, bool * trim_frags_file_write);
-void repetitions_detector(Synteny_list * synteny_block_list);
+    uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size, 
+    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write);
+void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * seq_manager, FILE * out_file);
 
 int main(int ac, char **av) {
-    
+
     
     //Iterator
     uint64_t i;
@@ -43,6 +43,9 @@ int main(int ac, char **av) {
     //Path to the multifrags file
     char multifrags_path[512];
     multifrags_path[0] = '\0';
+    //Path to the fastas
+    char fastas_path[512];
+    fastas_path[0] = '\0';
     //Initial hash table size (divisor of the longest sequence)
     uint64_t ht_size = 100; //Default
     //Default behaviour is the trimmed frags do not already exist
@@ -52,7 +55,7 @@ int main(int ac, char **av) {
 
     //Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     FILE * frags_file = NULL, * lengths_file = NULL, * out_file = NULL, * trim_frags_file = NULL;
-    init_args(ac, av, &frags_file, &out_file, &min_len, &N_ITERA, multifrags_path, &ht_size, &trim_frags_file, &trim_frags_file_write);
+    init_args(ac, av, &frags_file, &out_file, &min_len, &N_ITERA, multifrags_path, &ht_size, fastas_path, &trim_frags_file, &trim_frags_file_write);
 
     //Concat .lengths to path of multifrags %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     char path_lengths[READLINE];
@@ -161,15 +164,22 @@ int main(int ac, char **av) {
     Synteny_list * synteny_block_list = compute_synteny_list(ht, n_files, mp, &last_s_id);
     //traverse_synteny_list_and_write(synteny_block_list, n_files, "init");
     traverse_synteny_list(synteny_block_list);
-    printf("End of traverse_synteny_list\n");
-
-    //Put repetition detector function here
-    repetitions_detector(synteny_block_list);
-    printf("End of repetitions_detector\n");
-
     end = clock();
     print_memory_usage();
     fprintf(stdout, "[INFO] Generated synteny blocks. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
+
+    //Load sequences %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    begin = clock();
+    seq_manager->read_dna_sequences(fastas_path);
+    end = clock();
+    print_memory_usage();
+    fprintf(stdout, "[INFO] Loaded DNA sequences. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
+
+    //Detect repetitions
+    repetitions_detector(synteny_block_list, seq_manager, out_file);
+    printf("End of repetitions_detector\n");
+
+    
     
     
     // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -238,7 +248,7 @@ void print_all(){
 
 void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size,
-    FILE ** trim_frags_file, bool * trim_frags_file_write){
+    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write){
     
     int pNum = 0;
     while(pNum < argc){
@@ -281,6 +291,10 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
             *ht_size = (uint64_t) atoi(av[pNum+1]);
             if(*ht_size < 1) terror("The hash table divisor must be one at least");
         }
+        if (strcmp(av[pNum], "-pathfiles") == 0) {
+            strncpy(path_files, av[pNum+1], strlen(av[pNum+1]));
+            path_files[strlen(av[pNum+1])] = '\0';
+        }
         pNum++;
     }
     
@@ -290,7 +304,7 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     }
 }
 
-void repetitions_detector(Synteny_list * synteny_block_list) {
+void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * seq_manager, FILE * out_file) {
     Synteny_list * pointer_sbl = synteny_block_list;
     Synteny_block * pointer_sb;
     bool advance = true;
@@ -299,6 +313,9 @@ void repetitions_detector(Synteny_list * synteny_block_list) {
     uint64_t id;
     uint64_t i;
     uint64_t synteny_block_size;
+    uint64_t repetition_index = 0;
+
+    fprintf(out_file, "Repetition;Sequence;Starting position;Ending position;Repetition\n");
 
     while(pointer_sbl != NULL){
         advance = true;
@@ -321,11 +338,13 @@ void repetitions_detector(Synteny_list * synteny_block_list) {
             id_repetitions_matrix[index-1][1]++;
             if (id_repetitions_matrix[index-1][1] > 1) {
                 advance = false;
-                // DEBUG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                printf("Repetition detected:\n");
-                printSyntenyBlock(pointer_sb);
-                getchar();
-                // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                Synteny_block * aux_pointer = pointer_sbl->sb;
+                while (aux_pointer != NULL) {
+                    fprintf(out_file, "%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";", repetition_index, aux_pointer->b->genome->id, aux_pointer->b->start, aux_pointer->b->end);
+                    seq_manager->print_sequence_region(out_file, aux_pointer->b->genome->id, aux_pointer->b->start, aux_pointer->b->end);
+                    aux_pointer = aux_pointer->next;
+                }
+                repetition_index++;
             }
             found = false;
             pointer_sb = pointer_sb->next;
