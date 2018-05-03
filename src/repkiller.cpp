@@ -148,7 +148,13 @@ int main(int ac, char **av) {
     hash_table * ht = new hash_table(mp, max_len_sequence/ht_size, seq_manager, max_len_sequence);
     for(i=0;i<total_frags;i++){
         //Switch coordinates of reversed fragments. This can only be done at the end of trimming and not meanwhile!
-        if(loaded_frags[i].strand == 'r'){ coord_aux = loaded_frags[i].yStart; loaded_frags[i].yStart = loaded_frags[i].yEnd; loaded_frags[i].yEnd = coord_aux;}
+        if(loaded_frags[i].strand == 'r'){ 
+            coord_aux = loaded_frags[i].yStart; 
+            loaded_frags[i].yStart = loaded_frags[i].yEnd; 
+            loaded_frags[i].yEnd = coord_aux;
+        }
+        //fprintf(out_file, "%"PRId64";%"PRId64";%"PRIu64";%"PRIu64";%f\n", loaded_frags[i].block, loaded_frags[i].diag, loaded_frags[i].ident, loaded_frags[i].length, loaded_frags[i].similarity);
+        printf("%"PRIu64"\n", loaded_frags[i].ident);
         ht->insert_block(&loaded_frags[i]);
     }
     //ht->print_hash_table(2);
@@ -235,7 +241,7 @@ int main(int ac, char **av) {
 
 void print_all(){
     fprintf(stdout, "USAGE:\n");
-    fprintf(stdout, "           repkiller -multifrags [query] -out [results]\n");
+    fprintf(stdout, "           repkiller -multifrags [query] -pathfiles [fasta_path] -out [results]\n");
     fprintf(stdout, "OPTIONAL:\n");
     fprintf(stdout, "           -min_len_trimming   [Integer:   0<=X] (default 50)\n");
     fprintf(stdout, "           -min_trim_itera     [Integer:   0<=X] (default 500)\n");
@@ -321,7 +327,6 @@ void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * 
         advance = true;
         pointer_sb = pointer_sbl->sb;
         synteny_block_size = get_synteny_block_size(pointer_sb);
-
         uint64_t id_repetitions_matrix[synteny_block_size][2];
         for (i = 0; i < synteny_block_size; i++) {
             id_repetitions_matrix[i][1] = 0;
