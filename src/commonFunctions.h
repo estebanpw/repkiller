@@ -22,7 +22,7 @@ int exists_file(const char * file_name);
 	Load all fragments and transform global coordinates to local
 	n_frags should keep the number of fragments read
 */
-void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile ** loaded_frags);
+void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile ** loaded_frags, float similarity_threshold);
 
 
 /*

@@ -37,7 +37,7 @@ int exists_file(const char * file_name){
     return 0;
 }
 
-void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile ** loaded_frags){
+void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile ** loaded_frags, float similarity_threshold){
     
     struct FragFile temp_frag;
     uint64_t unused_len, total_frags;
@@ -68,42 +68,43 @@ void load_fragments_local(FILE * fragsfile, uint64_t * n_frags, struct FragFile 
 
     while(!feof(fragsfile)){
         readFragment(&temp_frag, fragsfile);
-        
-        //printFragment(&temp_frag); getchar();
-        //Transform coordinates to local
-        //Actually, it is not required anymore.
-        
-        /*if(prevx != temp_frag.seqX || prevy != temp_frag.seqY){
-            printf("Frag: (%"PRIu64", %"PRIu64") coord: (%"PRIu64", %"PRIu64") diag:: %"PRId64"\n", temp_frag.seqX, temp_frag.seqY, temp_frag.xStart, temp_frag.yStart, temp_frag.diag);
-            getchar();
+        if (temp_frag.similarity > similarity_threshold){
+            //printFragment(&temp_frag); getchar();
+            //Transform coordinates to local
+            //Actually, it is not required anymore.
+            
+            /*if(prevx != temp_frag.seqX || prevy != temp_frag.seqY){
+                printf("Frag: (%"PRIu64", %"PRIu64") coord: (%"PRIu64", %"PRIu64") diag:: %"PRId64"\n", temp_frag.seqX, temp_frag.seqY, temp_frag.xStart, temp_frag.yStart, temp_frag.diag);
+                getchar();
+            }
+            prevx = temp_frag.seqX; prevy = temp_frag.seqY;*/
+
+            
+            //printf("SeqX SeqY: (%"PRIu64", %"PRIu64")\n", temp_frag.seqX, temp_frag.seqY);
+            //printf("Frags. (%"PRIu64", %"PRIu64")\n", sequences[temp_frag.seqX].acum, sequences[temp_frag.seqY].acum);        
+
+            temp_frag.xStart = temp_frag.xStart;
+            temp_frag.xEnd = temp_frag.xEnd;
+            
+
+            temp_frag.yStart = temp_frag.yStart;
+            temp_frag.yEnd = temp_frag.yEnd;
+
+
+            //temp_frag.xStart = temp_frag.xStart - sequences[temp_frag.seqX].acum;
+            //temp_frag.xEnd = temp_frag.xEnd - sequences[temp_frag.seqX].acum; 
+
+            //temp_frag.yStart = temp_frag.yStart - sequences[temp_frag.seqY].acum;
+            //temp_frag.yEnd = temp_frag.yEnd - sequences[temp_frag.seqY].acum;
+
+
+            //Copy temp fragment into array
+            memcpy(&temp_frags_array[*n_frags], &temp_frag, sizeofFragment());
+            
+            *n_frags = *n_frags + 1;
+
+            if(*n_frags > total_frags){ terror("Something went wrong. More fragments than expected");}
         }
-        prevx = temp_frag.seqX; prevy = temp_frag.seqY;*/
-
-        
-        //printf("SeqX SeqY: (%"PRIu64", %"PRIu64")\n", temp_frag.seqX, temp_frag.seqY);
-        //printf("Frags. (%"PRIu64", %"PRIu64")\n", sequences[temp_frag.seqX].acum, sequences[temp_frag.seqY].acum);        
-
-        temp_frag.xStart = temp_frag.xStart;
-        temp_frag.xEnd = temp_frag.xEnd;
-        
-
-        temp_frag.yStart = temp_frag.yStart;
-        temp_frag.yEnd = temp_frag.yEnd;
-
-
-        //temp_frag.xStart = temp_frag.xStart - sequences[temp_frag.seqX].acum;
-        //temp_frag.xEnd = temp_frag.xEnd - sequences[temp_frag.seqX].acum; 
-
-        //temp_frag.yStart = temp_frag.yStart - sequences[temp_frag.seqY].acum;
-        //temp_frag.yEnd = temp_frag.yEnd - sequences[temp_frag.seqY].acum;
-
-
-        //Copy temp fragment into array
-        memcpy(&temp_frags_array[*n_frags], &temp_frag, sizeofFragment());
-        
-        *n_frags = *n_frags + 1;
-
-        if(*n_frags > total_frags){ terror("Something went wrong. More fragments than expected");}
     }
 
     //Copy pointer of array heap

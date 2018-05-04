@@ -18,7 +18,7 @@ int HARD_DEBUG_ACTIVE = 0;
 void print_all();
 void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size, 
-    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write);
+    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write, float * similarity_threshold);
 void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * seq_manager, FILE * out_file);
 
 int main(int ac, char **av) {
@@ -49,13 +49,15 @@ int main(int ac, char **av) {
     //Initial hash table size (divisor of the longest sequence)
     uint64_t ht_size = 100; //Default
     //Default behaviour is the trimmed frags do not already exist
-    bool trim_frags_file_write = true; 
+    bool trim_frags_file_write = true;
+    //Similarity threshold for reading fragments
+    float similarity_threshold = 60.0;
     
 
 
     //Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     FILE * frags_file = NULL, * lengths_file = NULL, * out_file = NULL, * trim_frags_file = NULL;
-    init_args(ac, av, &frags_file, &out_file, &min_len, &N_ITERA, multifrags_path, &ht_size, fastas_path, &trim_frags_file, &trim_frags_file_write);
+    init_args(ac, av, &frags_file, &out_file, &min_len, &N_ITERA, multifrags_path, &ht_size, fastas_path, &trim_frags_file, &trim_frags_file_write, &similarity_threshold);
 
     //Concat .lengths to path of multifrags %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     char path_lengths[READLINE];
@@ -74,7 +76,7 @@ int main(int ac, char **av) {
 
     //Load fragments into array %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     begin = clock();
-    load_fragments_local(frags_file, &total_frags, &loaded_frags);
+    load_fragments_local(frags_file, &total_frags, &loaded_frags, similarity_threshold);
     end = clock();
     print_memory_usage();
     fprintf(stdout, "[INFO] Loaded fragments into memory. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
@@ -143,19 +145,23 @@ int main(int ac, char **av) {
     begin = clock();
     memory_pool * mp = new memory_pool(POOL_SIZE);
     uint64_t max_len_sequence = seq_manager->get_maximum_length();
-    uint64_t coord_aux;
+    // uint64_t coord_aux;
     // ram debug over here
     hash_table * ht = new hash_table(mp, max_len_sequence/ht_size, seq_manager, max_len_sequence);
     for(i=0;i<total_frags;i++){
         //Switch coordinates of reversed fragments. This can only be done at the end of trimming and not meanwhile!
+        // TEMPORARY: Not taking into account revcomp
+        /*
         if(loaded_frags[i].strand == 'r'){ 
             coord_aux = loaded_frags[i].yStart; 
             loaded_frags[i].yStart = loaded_frags[i].yEnd; 
             loaded_frags[i].yEnd = coord_aux;
         }
-        //fprintf(out_file, "%"PRId64";%"PRId64";%"PRIu64";%"PRIu64";%f\n", loaded_frags[i].block, loaded_frags[i].diag, loaded_frags[i].ident, loaded_frags[i].length, loaded_frags[i].similarity);
-        printf("%"PRIu64"\n", loaded_frags[i].ident);
-        ht->insert_block(&loaded_frags[i]);
+        */
+        if(loaded_frags[i].strand != 'r'){ 
+            fprintf(stdout, "yolo %"PRIu64"\n", loaded_frags[i].ident);
+            ht->insert_block(&loaded_frags[i]);
+        }
     }
     //ht->print_hash_table(2);
 
@@ -182,8 +188,12 @@ int main(int ac, char **av) {
     fprintf(stdout, "[INFO] Loaded DNA sequences. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
 
     //Detect repetitions
+    begin = clock();
     repetitions_detector(synteny_block_list, seq_manager, out_file);
-    printf("End of repetitions_detector\n");
+    end = clock();
+    print_memory_usage();
+    fprintf(stdout, "[INFO] Detected repetitions. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
+    
 
     
     
@@ -247,6 +257,7 @@ void print_all(){
     fprintf(stdout, "           -min_trim_itera     [Integer:   0<=X] (default 500)\n");
     fprintf(stdout, "           -hash_table_divisor [Integer:   1<=X] (default 100)\n");
     fprintf(stdout, "           -reuse_trim_frags   [Path to destination output file]\n");
+    fprintf(stdout, "           -sim_threshold      [Float: 0.0 < X <= 100.0] (default 60)\n");
     fprintf(stdout, "                               Notice that this will save the file if\n");
     fprintf(stdout, "                               it does not exist and load it if it does\n");
     fprintf(stdout, "           --help      Shows the help for program usage\n");
@@ -254,7 +265,7 @@ void print_all(){
 
 void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size,
-    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write){
+    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write, float * similarity_threshold){
     
     int pNum = 0;
     while(pNum < argc){
@@ -301,6 +312,11 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
             strncpy(path_files, av[pNum+1], strlen(av[pNum+1]));
             path_files[strlen(av[pNum+1])] = '\0';
         }
+        if (strcmp(av[pNum], "-sim_threshold") == 0) {
+            *similarity_threshold = (float) atof(av[pNum+1]);
+            if(*similarity_threshold <= 0.0 || *similarity_threshold > 100.0) 
+                terror("Similarity threshold must be between (0, 100]");
+        }
         pNum++;
     }
     
@@ -313,21 +329,23 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
 void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * seq_manager, FILE * out_file) {
     Synteny_list * pointer_sbl = synteny_block_list;
     Synteny_block * pointer_sb;
-    bool advance = true;
-    bool found = false;
-    uint64_t index = 0;
+    Synteny_block * synteny_block_traverser;
+    bool advance;
+    bool found;
+    uint64_t index;
     uint64_t id;
     uint64_t i;
     uint64_t synteny_block_size;
     uint64_t repetition_index = 0;
 
-    fprintf(out_file, "Repetition;Sequence;Starting position;Ending position;Repetition\n");
+    fprintf(out_file, "Repetition Number;Sequence;Starting position;Ending position;Repetition\n");
 
     while(pointer_sbl != NULL){
         advance = true;
         pointer_sb = pointer_sbl->sb;
         synteny_block_size = get_synteny_block_size(pointer_sb);
         uint64_t id_repetitions_matrix[synteny_block_size][2];
+
         for (i = 0; i < synteny_block_size; i++) {
             id_repetitions_matrix[i][1] = 0;
         }
@@ -343,11 +361,11 @@ void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * 
             id_repetitions_matrix[index-1][1]++;
             if (id_repetitions_matrix[index-1][1] > 1) {
                 advance = false;
-                Synteny_block * aux_pointer = pointer_sbl->sb;
-                while (aux_pointer != NULL) {
-                    fprintf(out_file, "%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";", repetition_index, aux_pointer->b->genome->id, aux_pointer->b->start, aux_pointer->b->end);
-                    seq_manager->print_sequence_region(out_file, aux_pointer->b->genome->id, aux_pointer->b->start, aux_pointer->b->end);
-                    aux_pointer = aux_pointer->next;
+                synteny_block_traverser = pointer_sbl->sb;
+                while (synteny_block_traverser != NULL) {
+                    fprintf(out_file, "%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";", repetition_index, synteny_block_traverser->b->genome->id, synteny_block_traverser->b->start, synteny_block_traverser->b->end);
+                    seq_manager->print_sequence_region(out_file, synteny_block_traverser->b->genome->id, synteny_block_traverser->b->start, synteny_block_traverser->b->end);
+                    synteny_block_traverser = synteny_block_traverser->next;
                 }
                 repetition_index++;
             }
