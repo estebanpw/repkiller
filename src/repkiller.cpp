@@ -18,8 +18,8 @@ int HARD_DEBUG_ACTIVE = 0;
 void print_all();
 void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size, 
-    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write, float * similarity_threshold);
-void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * seq_manager, FILE * out_file);
+    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write, float * similarity_threshold, bool * include_borders);
+void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * seq_manager, FILE * out_file, bool include_borders);
 
 int main(int ac, char **av) {
 
@@ -52,12 +52,14 @@ int main(int ac, char **av) {
     bool trim_frags_file_write = true;
     //Similarity threshold for reading fragments
     float similarity_threshold = 60.0;
+    //Flag to include borders in repetitions
+    bool include_borders = false;
     
 
 
     //Open frags file, lengths file and output files %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     FILE * frags_file = NULL, * lengths_file = NULL, * out_file = NULL, * trim_frags_file = NULL;
-    init_args(ac, av, &frags_file, &out_file, &min_len, &N_ITERA, multifrags_path, &ht_size, fastas_path, &trim_frags_file, &trim_frags_file_write, &similarity_threshold);
+    init_args(ac, av, &frags_file, &out_file, &min_len, &N_ITERA, multifrags_path, &ht_size, fastas_path, &trim_frags_file, &trim_frags_file_write, &similarity_threshold, &include_borders);
 
     //Concat .lengths to path of multifrags %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     char path_lengths[READLINE];
@@ -189,7 +191,7 @@ int main(int ac, char **av) {
 
     //Detect repetitions
     begin = clock();
-    repetitions_detector(synteny_block_list, seq_manager, out_file);
+    repetitions_detector(synteny_block_list, seq_manager, out_file, include_borders);
     end = clock();
     print_memory_usage();
     fprintf(stdout, "[INFO] Detected repetitions. T = %e\n", (double)(end-begin)/CLOCKS_PER_SEC);
@@ -258,6 +260,7 @@ void print_all(){
     fprintf(stdout, "           -hash_table_divisor [Integer:   1<=X] (default 100)\n");
     fprintf(stdout, "           -reuse_trim_frags   [Path to destination output file]\n");
     fprintf(stdout, "           -sim_threshold      [Float: 0.0 < X <= 100.0] (default 60)\n");
+    fprintf(stdout, "           -include_borders    (default: false)\n");
     fprintf(stdout, "                               Notice that this will save the file if\n");
     fprintf(stdout, "                               it does not exist and load it if it does\n");
     fprintf(stdout, "           --help      Shows the help for program usage\n");
@@ -265,7 +268,8 @@ void print_all(){
 
 void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     uint64_t * min_len_trimming, uint64_t * min_trim_itera, char * path_frags, uint64_t * ht_size,
-    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write, float * similarity_threshold){
+    char * path_files, FILE ** trim_frags_file, bool * trim_frags_file_write, float * similarity_threshold, 
+    bool * include_borders){
     
     int pNum = 0;
     while(pNum < argc){
@@ -317,6 +321,9 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
             if(*similarity_threshold <= 0.0 || *similarity_threshold > 100.0) 
                 terror("Similarity threshold must be between (0, 100]");
         }
+        if (strcmp(av[pNum], "-include_borders") == 0) {
+            *include_borders = true;
+        }
         pNum++;
     }
     
@@ -326,7 +333,7 @@ void init_args(int argc, char ** av, FILE ** multifrags, FILE ** out_file,
     }
 }
 
-void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * seq_manager, FILE * out_file) {
+void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * seq_manager, FILE * out_file, bool include_borders) {
     Synteny_list * pointer_sbl = synteny_block_list;
     Synteny_block * pointer_sb;
     Synteny_block * synteny_block_traverser;
@@ -336,7 +343,13 @@ void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * 
     uint64_t id;
     uint64_t i;
     uint64_t synteny_block_size;
+    uint64_t repetition_start;
+    uint64_t repetition_end;
     uint64_t repetition_index = 0;
+    uint64_t sequences_lengths[seq_manager->get_number_of_sequences()];
+
+    for (i = 0; i < seq_manager->get_number_of_sequences(); i++)
+        sequences_lengths[i] = strlen(seq_manager->get_sequence_by_label(i)->seq);
 
     fprintf(out_file, "Repetition Number;Sequence;Starting position;Ending position;Repetition\n");
 
@@ -363,8 +376,10 @@ void repetitions_detector(Synteny_list * synteny_block_list, sequence_manager * 
                 advance = false;
                 synteny_block_traverser = pointer_sbl->sb;
                 while (synteny_block_traverser != NULL) {
-                    fprintf(out_file, "%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";", repetition_index, synteny_block_traverser->b->genome->id, synteny_block_traverser->b->start, synteny_block_traverser->b->end);
-                    seq_manager->print_sequence_region(out_file, synteny_block_traverser->b->genome->id, synteny_block_traverser->b->start, synteny_block_traverser->b->end);
+                    repetition_start = get_repetition_start(synteny_block_traverser->b->start, include_borders);
+                    repetition_end = get_repetition_end(synteny_block_traverser->b->end, include_borders, sequences_lengths[synteny_block_traverser->b->genome->id]);
+                    fprintf(out_file, "%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";", repetition_index, synteny_block_traverser->b->genome->id, repetition_start, repetition_end);
+                    seq_manager->print_sequence_region(out_file, synteny_block_traverser->b->genome->id, repetition_start, repetition_end);
                     synteny_block_traverser = synteny_block_traverser->next;
                 }
                 repetition_index++;

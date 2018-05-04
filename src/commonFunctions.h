@@ -186,6 +186,19 @@ long double median_from_vector(uint64_t * v, uint64_t l);
 */
 void print_memory_usage();
 
+/*
+	Obtains size of a given synteny block
+*/
 uint64_t get_synteny_block_size(Synteny_block *pointer_sb);
+
+/*
+	Returns starting coordinates of a repetition depending on include_borders option
+*/
+uint64_t get_repetition_start(uint64_t original_value, bool include_borders);
+
+/*
+	Returns ending coordinates of a repetition depending on include_borders option
+*/
+uint64_t get_repetition_end(uint64_t original_value, bool include_borders, uint64_t sequence_length);
 
 #endif /* COMMON_FUNCTIONS_H */

@@ -1661,3 +1661,17 @@ uint64_t get_synteny_block_size(Synteny_block *pointer_sb) {
     }
     return ans;
 }
+
+uint64_t get_repetition_start(uint64_t original_value, bool include_borders) {
+    uint64_t ans;
+    ans = include_borders ? original_value - BORDER_LENGTH : original_value;
+    ans = original_value < BORDER_LENGTH ? 0 : ans;
+    return ans;
+}
+
+uint64_t get_repetition_end(uint64_t original_value, bool include_borders, uint64_t sequence_length) {
+    uint64_t ans;
+    ans = include_borders ? original_value + BORDER_LENGTH : original_value;
+    ans = original_value + BORDER_LENGTH > sequence_length ? sequence_length : ans;
+    return ans;
+}

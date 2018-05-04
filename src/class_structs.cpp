@@ -1027,6 +1027,7 @@ void sequence_manager::print_annotations(){
 
 void sequence_manager::print_sequence_region(FILE * fout, uint64_t label, uint64_t from, uint64_t to){
 	uint64_t i;
+	//Check if length surpasses limit
 //	uint64_t j=0;
 	for(i=from;i<to-1;i++){
 //		if(j!= 0 && j % PRINT_RATE == 0) fprintf(fout, "\n");
